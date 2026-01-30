@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>Plan Week</title>
+
+	<link rel="stylesheet" href="/css/reset.css">
+	<link rel="stylesheet" href="/css/style.css">
+</head>
+
+<body data-mode="plan">
+	<div class="page page--plan-week">
+
+		<header class="page__header"></header>
+
+		<section class="page__section">
+			<div class="container">
+
+				<h2 class="section__title">Create Week Plan</h2>
+				<p class="section__description">Drag and drop Excel files here or click the button</p>
+
+				<div id="dropZone" class="dropzone">
+					Drop: <strong>sales.xlsx</strong>
+				</div>
+
+				<div class="section__actions">
+					<input type="file" id="fileInput" multiple hidden>
+					<button id="selectBtn" class="button button--primary">Select files</button>
+					<button id="generateBtn" class="button button--primary" style="display:none">Generate Report</button>
+				</div>
+
+				<div class="section__actions">
+					<a href="/index.html" class="button button--secondary">← Back to Home</a>
+				</div>
+
+			</div>
+		</section>
+
+		<!-- Modal: Message -->
+		<div id="modalMessage" class="modal" style="display:none">
+			<div class="modal__content">
+				<p id="modalMessageText"></p>
+				<button id="modalOkBtn" class="button button--primary">OK</button>
+			</div>
+		</div>
+
+		<!-- Modal: Week Input -->
+		<div id="modalWeekPrompt" class="modal" style="display:none">
+			<div class="modal__content">
+				<p>📅 Enter week number (e.g. 30):</p>
+				<input type="number" id="weekInput" class="input" placeholder="30" min="1" max="53">
+
+				<div class="modal__actions">
+					<button id="confirmWeekBtn" class="button button--primary">OK</button>
+					<button id="cancelWeekBtn" class="button button--secondary">Cancel</button>
+				</div>
+			</div>
+		</div>
+
+		<footer class="page__footer"></footer>
+
+	</div>
+
+	<script type="module" src="/js/plan-week.js"></script>
+</body>
+
+</html>

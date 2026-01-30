@@ -1,0 +1,431 @@
+/* ============================================================
+   GLOBAL RESET
+   ============================================================ */
+
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap');
+
+:root {
+  --primary: #7c3aed;
+  --primary-hover: #6b21a8;
+  --text: #1f2937;
+  --text-light: #4b5563;
+  --bg: #f9fafb;
+  --white: #fff;
+  --gray: #f3f4f6;
+  --blue: #0077c8;
+  --yellow: #f5d742;
+  --yellow-dark: #c9a500;
+}
+
+*,
+*::before,
+*::after {
+  margin: 0;
+  padding: 0;
+  border: none;
+  box-sizing: border-box;
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  font-family: 'Poppins', sans-serif;
+  background-color: var(--bg);
+  color: var(--text);
+  font-size: 16px;
+  line-height: 1.4;
+}
+
+/* ============================================================
+   PAGE LAYOUT
+   ============================================================ */
+
+.page {
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.page__header,
+.page__footer {
+  padding: 20px 0;
+}
+
+.page__section {
+  flex-grow: 1;
+  padding: 40px 16px;
+}
+
+/* CLASSIC CONTAINER */
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 16px;
+}
+
+/* INDEX PAGE CENTERING */
+.page--index .container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+
+/* ============================================================
+   TYPOGRAPHY
+   ============================================================ */
+
+.section__title {
+  font-size: 2rem;
+  font-weight: 700;
+  margin-bottom: 16px;
+  text-align: center;
+}
+
+.section__subtitle {
+  font-size: 1.25rem;
+  margin-bottom: 16px;
+  text-align: center;
+}
+
+.section__description {
+  font-size: 1rem;
+  color: var(--text-light);
+  margin-bottom: 24px;
+  text-align: center;
+}
+
+/* ============================================================
+   BUTTONS
+   ============================================================ */
+
+.button {
+  display: inline-block;
+  padding: 12px 24px;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 1rem;
+  cursor: pointer;
+  text-align: center;
+  transition: 0.25s;
+  border: none;
+}
+
+.button--primary {
+  background: var(--primary);
+  color: var(--white);
+}
+
+.button--primary:hover {
+  background: var(--primary-hover);
+}
+
+.button--secondary {
+  background: transparent;
+  border: 1px solid #d1d5db;
+  color: var(--text);
+}
+
+.button--secondary:hover {
+  background: var(--gray);
+}
+
+.button--big {
+  padding: 16px 28px;
+  font-size: 1.25rem;
+}
+
+.button--full {
+  width: 100%;
+}
+
+/* ============================================================
+   INPUTS & SELECTS
+   ============================================================ */
+
+.input,
+.select {
+  width: 100%;
+  padding: 12px 16px;
+  border-radius: 8px;
+  border: 1px solid #d1d5db;
+  font-size: 1rem;
+  margin-top: 6px;
+  background: var(--white);
+}
+
+.input:focus,
+.select:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.2);
+  outline: none;
+}
+
+.form__label {
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 16px;
+  font-size: 0.95rem;
+}
+
+/* ============================================================
+   DROPZONE
+   ============================================================ */
+
+.dropzone {
+  border: 2px dashed var(--primary);
+  padding: 40px;
+  border-radius: 12px;
+  background: var(--white);
+  text-align: center;
+  margin-bottom: 24px;
+  transition: background 0.3s;
+}
+
+.dropzone:hover {
+  background: var(--gray);
+}
+
+/* ============================================================
+   GLOBAL MODALS
+   ============================================================ */
+
+.modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: none;
+  justify-content: center;
+  align-items: center;
+  z-index: 200;
+}
+
+.modal.active {
+  display: flex;
+}
+
+.modal__content {
+  background: var(--white);
+  padding: 32px;
+  border-radius: 12px;
+  width: 90%;
+  max-width: 420px;
+  text-align: center;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+}
+
+.modal__title {
+  font-size: 1.4rem;
+  font-weight: 700;
+  margin-bottom: 16px;
+}
+
+.modal__actions {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  margin-top: 20px;
+}
+
+/* ============================================================
+   SCANNER
+   ============================================================ */
+
+.scanner {
+  margin-top: 20px;
+}
+
+.scanner__preview {
+  width: 100%;
+  border-radius: 12px;
+  margin-top: 12px;
+  display: none;
+}
+
+.scanner__log {
+  background: var(--gray);
+  border-radius: 8px;
+  padding: 12px;
+  height: 180px;
+  overflow-y: auto;
+  margin-top: 20px;
+  font-size: 0.9rem;
+}
+
+.scanner__log-item {
+  display: flex;
+  justify-content: space-between;
+  padding: 6px 0;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+/* ============================================================
+   ORDER STATUS
+   ============================================================ */
+
+.order-status {
+  padding: 12px;
+  border-radius: 8px;
+  font-weight: 600;
+  margin-bottom: 16px;
+  text-align: center;
+}
+
+.order-status--new {
+  background: #d1fae5;
+  color: #065f46;
+}
+
+.order-status--progress {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.order-status--completed {
+  background: #dbeafe;
+  color: #1e3a8a;
+}
+
+.order-status--canceled {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+/* ============================================================
+   QTY BLOCK
+   ============================================================ */
+
+.qty {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.qty__input {
+  flex: 1;
+}
+
+.qty__plus {
+  width: 56px;
+  height: 56px;
+  font-size: 28px;
+  border-radius: 8px;
+  padding: 0;
+}
+
+/* ============================================================
+   MODAL KEYPAD
+   ============================================================ */
+
+.modal-keypad {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  display: none;
+  justify-content: center;
+  align-items: center;
+  padding: 20px;
+  z-index: 999;
+}
+
+.modal-keypad.active {
+  display: flex;
+}
+
+.modal-keypad__content {
+  background: var(--white);
+  width: 100%;
+  max-width: 360px;
+  border-radius: 12px;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.modal-keypad__title {
+  font-size: 20px;
+  font-weight: 600;
+  text-align: center;
+}
+
+.modal-keypad__input {
+  width: 100%;
+  font-size: 28px;
+  padding: 12px;
+  text-align: center;
+  border: 2px solid #ddd;
+  border-radius: 8px;
+}
+
+.modal-keypad__grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+}
+
+.modal-keypad__key {
+  font-size: 24px;
+  padding: 14px 0;
+  border-radius: 8px;
+  background: #f2f2f2;
+  border: 1px solid #ccc;
+}
+
+.modal-keypad__actions {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.modal-keypad__btn {
+  flex: 1;
+  padding: 14px 0;
+  font-size: 18px;
+  border-radius: 8px;
+}
+
+/* ============================================================
+   MOBILE ADAPTATION
+   ============================================================ */
+
+@media (max-width: 768px) {
+  .page__section {
+    padding: 20px 12px;
+  }
+
+  .button {
+    font-size: 1.1rem;
+    padding: 14px;
+  }
+
+  .input,
+  .select {
+    font-size: 1.1rem;
+    padding: 14px;
+  }
+
+  .scanner-qr {
+    display: none;
+  }
+}
+@media (max-width: 540px) {
+  .section__actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .section__actions a {
+    width: 100%;
+    margin: 6px 0;
+    transition: transform 0.25s, box-shadow 0.25s;
+  }
+
+  .section__actions a:nth-child(1) { animation-delay: 0.3s; }
+  .section__actions a:nth-child(2) { animation-delay: 0.45s; }
+  .section__actions a:nth-child(3) { animation-delay: 0.6s; }
+  .section__actions a:nth-child(4) { animation-delay: 0.75s; }
+}

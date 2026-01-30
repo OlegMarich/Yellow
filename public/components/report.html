@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Quality Report</title>
+
+  <link rel="stylesheet" href="/css/reset.css">
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+
+<body data-mode="report">
+  <div class="page page--report">
+
+    <header class="page__header"></header>
+
+    <section class="page__section">
+      <div class="container">
+
+        <h2 class="section__title">Quality Report</h2>
+        <p class="section__description">Drag and drop Excel files here or click the button</p>
+
+        <div id="dropZone" class="dropzone">
+          Drop: <strong>transport.xlsx</strong> + <strong>sales.xlsx</strong>
+        </div>
+
+        <div class="section__field">
+          <label for="reportDate" class="section__label">Select report date:</label>
+          <input type="date" id="reportDate" class="input">
+        </div>
+
+        <div class="section__actions">
+          <input type="file" id="fileInput" id="salesFileInput" multiple hidden>
+          <button id="selectBtn" class="button button--primary">Select files</button>
+          <!-- <button id="parseSalesBtn" class="button button--primary">Parse Sales Plan</button> -->
+          <button id="generateBtn" class="button button--secondary">Generate Report</button>
+        </div>
+
+        <div class="section__actions">
+          <a href="/index.html" class="button button--secondary">← Back to Home</a>
+        </div>
+
+      </div>
+    </section>
+
+    <div id="modalMessage" class="modal" style="display:none">
+      <div class="modal__content">
+        <p id="modalMessageText"></p>
+        <button id="modalOkBtn" class="button button--primary">OK</button>
+      </div>
+    </div>
+
+    <footer class="page__footer"></footer>
+
+  </div>
+
+  <script type="module" src="/js/report.js"></script>
+</body>
+
+</html>
