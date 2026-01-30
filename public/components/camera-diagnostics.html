@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="uk">
+
+<head>
+  <meta charset="UTF-8">
+  <title>Camera Diagnostics</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      padding: 20px;
+    }
+
+    .ok {
+      color: green;
+    }
+
+    .err {
+      color: red;
+    }
+
+    video {
+      width: 100%;
+      max-width: 400px;
+      background: #000;
+      border-radius: 8px;
+      margin-top: 10px;
+    }
+
+    button {
+      padding: 10px 20px;
+      font-size: 16px;
+      margin-bottom: 20px;
+    }
+  </style>
+</head>
+
+<body>
+
+  <h2>Діагностика камери</h2>
+  <button id="run">Запустити діагностику</button>
+
+  <div id="log"></div>
+  <video id="video" autoplay playsinline muted></video>
+
+  <script>
+    function log(msg, ok = true) {
+      const div = document.createElement('div');
+      div.className = ok ? 'ok' : 'err';
+      div.textContent = msg;
+      document.getElementById('log').appendChild(div);
+    }
+
+    document.getElementById('run').addEventListener('click', async () => {
+      const video = document.getElementById('video');
+      document.getElementById('log').innerHTML = '';
+
+      log("🔍 Перевіряю список пристроїв...");
+
+      try {
+        const devices = await navigator.mediaDevices.enumerateDevices();
+        console.log(devices);
+
+        const cams = devices.filter(d => d.kind === 'videoinput');
+        if (cams.length === 0) {
+          log("❌ Камери не знайдено", false);
+          return;
+        } else {
+          log(`✔ Знайдено камер: ${cams.length}`);
+        }
+      } catch (e) {
+        log("❌ enumerateDevices помилка: " + e, false);
+      }
+
+      log("🔍 Перевіряю доступ до камери (facingMode: environment)...");
+
+      let stream = null;
+
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: "environment" }
+        });
+        log("✔ Задня камера працює");
+      } catch (e) {
+        log("⚠ Не вдалося увімкнути задню камеру: " + e.name);
+
+        log("🔍 Пробую fallback (video: true)...");
+        try {
+          stream = await navigator.mediaDevices.getUserMedia({ video: true });
+          log("✔ Fallback камера працює");
+        } catch (e2) {
+          log("❌ Fallback теж не працює: " + e2.name, false);
+          return;
+        }
+      }
+
+      video.srcObject = stream;
+
+      log("🔍 Перевіряю, чи відео може відтворюватися...");
+
+      try {
+        await video.play();
+        log("✔ Відео відтворюється");
+      } catch (e) {
+        log("❌ Відео не може відтворитися: " + e, false);
+      }
+
+      log("🎉 Діагностика завершена");
+    });
+  </script>
+
+</body>
+
+</html>
