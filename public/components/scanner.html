@@ -18,6 +18,26 @@
 </head>
 
 <body data-mode="scanner">
+  <div id="scannerOverlay" class="scanner-overlay">
+    <video id="video" autoplay playsinline muted></video>
+
+    <div id="scanner-overlay-dark"></div>
+
+    <div id="scanner-frame">
+      <div class="corner tl"></div>
+      <div class="corner tr"></div>
+      <div class="corner bl"></div>
+      <div class="corner br"></div>
+    </div>
+
+    <div id="scanner-laser"></div>
+
+    <button id="flashToggle" class="flash-btn">🔦</button>
+    <button id="closeScanner" class="close-scanner-btn">✖</button>
+
+    <!-- <audio id="beep-sound" src="/sounds/beep.mp3" preload="auto"></audio> -->
+  </div>
+
   <div class="page page--scanner">
 
     <header class="page__header"></header>
@@ -109,8 +129,6 @@
           <button id="startVideoScanner" class="button button--primary button--full">
             🎥 Enable Video Scanner
           </button>
-
-          <!-- <div id="cameraStatus" class="scanner__info"></div> -->
 
           <video id="videoScanner" class="video-scanner" autoplay playsinline muted></video>
 

@@ -665,68 +665,171 @@ window.confirmManualQty = function () {
 };
 
 // ============================================================
-// VIDEO SCANNER (ZXing)
+// FULLSCREEN VIDEO SCANNER — Overlay Mode
+// Autofocus, AI Noise Filter, Torch, Flash Border, WebAudio Beep
 // ============================================================
 
 let videoStream = null;
 let codeReader = null;
 let lastScanned = null;
+let torchEnabled = false;
 
-async function stopVideoScanner() {
+let lastScanTime = 0;
+const SCAN_COOLDOWN = 600;
+const MIN_CODE_LENGTH = 4;
+
+let autofocusInterval = null;
+
+// ----------------------
+// WebAudio beep
+// ----------------------
+function playBeep() {
+  const ctx = new (window.AudioContext || window.webkitAudioContext)();
+  const osc = ctx.createOscillator();
+  const gain = ctx.createGain();
+
+  osc.type = "sine";
+  osc.frequency.value = 880;
+  gain.gain.value = 0.15;
+
+  osc.connect(gain);
+  gain.connect(ctx.destination);
+
+  osc.start();
+  osc.stop(ctx.currentTime + 0.12);
+}
+
+// ----------------------
+// STOP SCANNER
+// ----------------------
+function stopVideoScanner() {
   if (videoStream) {
     videoStream.getTracks().forEach((t) => t.stop());
     videoStream = null;
   }
-  const video = document.getElementById('videoScanner');
-  video.style.display = 'none';
-  log('⏹ Відео‑сканер вимкнено');
+
+  clearInterval(autofocusInterval);
+
+  document.getElementById("scannerOverlay").style.display = "none";
+  document.body.classList.remove("scan-flash");
+
+  log("⏹ Відео‑сканер вимкнено");
 }
 
-document.getElementById('startVideoScanner').addEventListener('click', async () => {
+document.getElementById("closeScanner").onclick = stopVideoScanner;
+
+// ----------------------
+// START SCANNER
+// ----------------------
+document.getElementById("startVideoScanner").addEventListener("click", async () => {
   if (!selectedClient) {
-    alert('Спочатку виберіть клієнта');
+    alert("Спочатку виберіть клієнта");
     return;
   }
 
-  const video = document.getElementById('videoScanner');
-  video.style.display = 'block';
+  const overlay = document.getElementById("scannerOverlay");
+  const video = document.getElementById("video");
+  const flashBtn = document.getElementById("flashToggle");
+
+  overlay.style.display = "block";
 
   try {
     codeReader = new ZXing.BrowserMultiFormatReader();
 
-    // 1) Спочатку пробуємо задню камеру (без exact — Samsung це блокує)
+    // Try rear camera first
     try {
       videoStream = await navigator.mediaDevices.getUserMedia({
-        video: {facingMode: 'environment'},
+        video: {
+          facingMode: "environment",
+          width: { ideal: 1920 },
+          height: { ideal: 1080 },
+          advanced: [{ torch: false }],
+        },
       });
-    } catch (e) {
-      // 2) Якщо не вдалося — пробуємо будь-яку доступну камеру
-      videoStream = await navigator.mediaDevices.getUserMedia({
-        video: true,
-      });
+    } catch {
+      videoStream = await navigator.mediaDevices.getUserMedia({ video: true });
     }
 
     video.srcObject = videoStream;
 
-    codeReader.decodeFromVideoDevice(null, video, (result, err) => {
-      if (result) {
-        const code = result.text.trim();
+    // ----------------------
+    // Autofocus every 2 sec
+    // ----------------------
+    autofocusInterval = setInterval(() => {
+      if (!videoStream) return;
 
-        if (code !== lastScanned) {
-          lastScanned = code;
-          navigator.vibrate?.(100);
-          addScan(code, 1);
-          saveSession();
-          updateStatusUI();
-          updateProgress();
-          updateLog();
-        }
+      const tracks = videoStream.getVideoTracks();
+      if (!tracks.length) return;
+
+      const track = tracks[0];
+      const caps = track.getCapabilities();
+
+      if (caps.focusMode) {
+        track.applyConstraints({ advanced: [{ focusMode: "continuous" }] });
       }
+    }, 2000);
+
+    // ----------------------
+    // Torch toggle
+    // ----------------------
+    flashBtn.onclick = async () => {
+      if (!videoStream) return;
+
+      const tracks = videoStream.getVideoTracks();
+      if (!tracks.length) return;
+
+      const track = tracks[0];
+      const caps = track.getCapabilities();
+
+      if (!caps.torch) {
+        alert("Ліхтарик не підтримується");
+        return;
+      }
+
+      torchEnabled = !torchEnabled;
+      await track.applyConstraints({ advanced: [{ torch: torchEnabled }] });
+      flashBtn.style.background = torchEnabled ? "yellow" : "white";
+    };
+
+    // ----------------------
+    // Decode loop
+    // ----------------------
+    codeReader.decodeFromVideoDevice(null, video, (result, err) => {
+      if (!result) return;
+
+      const now = Date.now();
+      const code = result.text.trim();
+      const format = result.getBarcodeFormat?.() || "UNKNOWN";
+
+      // AI noise filter
+      if (code.length < MIN_CODE_LENGTH) return;
+      if (now - lastScanTime < SCAN_COOLDOWN) return;
+      if (code === lastScanned) return;
+
+      lastScanned = code;
+      lastScanTime = now;
+
+      // Green flash
+      document.body.classList.add("scan-flash");
+      setTimeout(() => document.body.classList.remove("scan-flash"), 150);
+
+      // Vibration + beep
+      navigator.vibrate?.(100);
+      playBeep();
+
+      console.log("Detected format:", format);
+
+      // Business logic
+      addScan(code, 1);
+      saveSession();
+      updateStatusUI();
+      updateProgress();
+      updateLog();
     });
 
-    log('🎥 Відео‑сканер увімкнено');
+    log("🎥 FULLSCREEN відео‑сканер увімкнено");
   } catch (err) {
     console.error(err);
-    log('❌ Не вдалося увімкнути відео‑сканер');
+    log("❌ Не вдалося увімкнути відео‑сканер");
   }
 });
