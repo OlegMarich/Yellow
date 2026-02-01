@@ -653,3 +653,39 @@ body {
   color: var(--text-light);
   font-size: 0.95rem;
 }
+
+.qr--disabled {
+  opacity: 0.3;
+  filter: grayscale(1);
+  transition:
+    opacity 0.3s ease,
+    filter 0.3s ease;
+}
+
+.qr--active {
+  opacity: 1;
+  filter: none;
+}
+
+.qr-status {
+  margin-top: 8px;
+  font-size: 14px;
+  text-align: center;
+  color: #666;
+}
+
+.qr-status--loading {
+  animation: pulse 1.2s infinite ease-in-out;
+}
+
+@keyframes pulse {
+  0% {
+    opacity: 0.4;
+  }
+  50% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0.4;
+  }
+}

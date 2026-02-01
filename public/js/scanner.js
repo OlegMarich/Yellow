@@ -48,83 +48,54 @@ function sessionKey() {
 async function initUniversalQR() {
   const qrBox = document.getElementById('qrBox');
   const qrStatus = document.getElementById('qrStatus');
-
-  if (!qrBox || !window.QRCode) {
-    console.warn('QR: qrBox або QRCode не знайдено');
-    return;
-  }
-
   let currentUrl = null;
 
-  const setStatus = (text) => {
-    if (qrStatus) qrStatus.textContent = text;
+  const setStatus = (text, loading = false) => {
+    qrStatus.textContent = text;
+    qrStatus.classList.toggle('qr-status--loading', loading);
+  };
+
+  const setQRState = (active) => {
+    qrBox.classList.toggle('qr--active', active);
+    qrBox.classList.toggle('qr--disabled', !active);
   };
 
   const renderQR = (url) => {
-    if (!url || url === currentUrl) return;
     currentUrl = url;
-
     qrBox.innerHTML = '';
-    new QRCode(qrBox, {
-      text: url,
-      width: 180,
-      height: 180,
-    });
-
+    new QRCode(qrBox, {text: url, width: 180, height: 180});
     console.log('QR updated:', url);
   };
 
-  const getLocalUrl = async () => {
-    const res = await fetch('/api/server-ip');
-    const {ip, port} = await res.json();
-    return `http://${ip}:${port}/components/scanner.html`;
-  };
-
   const getNgrokUrl = async () => {
-    const res = await fetch('http://127.0.0.1:4040/api/tunnels');
-    const data = await res.json();
-    const httpsTunnel = data.tunnels.find((t) => t.public_url.startsWith('https://'));
-    return httpsTunnel ? `${httpsTunnel.public_url}/components/scanner.html` : null;
+    try {
+      const res = await fetch('/api/ngrok-url');
+      const {url} = await res.json();
+      return url;
+    } catch {
+      return null;
+    }
   };
 
-  // 🔁 1) Спочатку перевіряємо ngrok
-  try {
-    const ngrokUrl = await getNgrokUrl();
-    if (ngrokUrl) {
-      renderQR(ngrokUrl);
-      setStatus('Режим: віддалений доступ через ngrok (HTTPS)');
-    } else {
-      const localUrl = await getLocalUrl();
-      renderQR(localUrl);
-      setStatus('Режим: локальна мережа (HTTP)');
-    }
-  } catch (e) {
-    console.warn('QR: ngrok недоступний, пробуємо локальний режим');
-    try {
-      const localUrl = await getLocalUrl();
-      renderQR(localUrl);
-      setStatus('Режим: локальна мережа (HTTP)');
-    } catch (err) {
-      console.error('QR: не вдалося отримати локальний IP', err);
-      setStatus('Помилка: немає доступу до локального IP');
-    }
-  }
+  // 🔥 1) Показуємо сірий QR + анімацію очікування
+  const placeholder = 'https://waiting-for-ngrok.example/standby';
+  renderQR(placeholder);
+  setStatus('Очікуємо ngrok…', true);
+  setQRState(false);
 
-  // 🔁 2) Перевіряємо ngrok кожні 5 секунд
+  // 🔥 2) Перевіряємо ngrok кожні 2 секунди
   const pollNgrok = async () => {
-    try {
-      const ngrokUrl = await getNgrokUrl();
-      if (ngrokUrl && currentUrl !== ngrokUrl) {
-        renderQR(ngrokUrl);
-        setStatus('Режим: віддалений доступ через ngrok (HTTPS)');
-      }
-    } catch (e) {
-      console.warn('QR: ngrok недоступний, залишаємо поточний режим');
+    const ngrokUrl = await getNgrokUrl();
+
+    if (ngrokUrl && currentUrl !== ngrokUrl) {
+      renderQR(ngrokUrl);
+      setStatus('ngrok підключено — HTTPS активний');
+      setQRState(true);
     }
   };
 
-  setTimeout(pollNgrok, 2000);
-  setInterval(pollNgrok, 5000);
+  pollNgrok(); // ← додай це
+  setInterval(pollNgrok, 2000);
 }
 
 window.addEventListener('DOMContentLoaded', () => {

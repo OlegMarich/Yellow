@@ -166,6 +166,19 @@ app.post('/api/scanner/save', (req, res) => {
   }
 });
 
+app.get('/api/ngrok-url', async (req, res) => {
+  try {
+    const response = await fetch('http://127.0.0.1:4040/api/tunnels');
+    const data = await response.json();
+    const httpsTunnel = data.tunnels.find((t) => t.public_url.startsWith('https://'));
+    const url = httpsTunnel ? `${httpsTunnel.public_url}/components/scanner.html` : null;
+    res.json({url});
+  } catch (err) {
+    console.error('Ngrok API error:', err);
+    res.status(500).json({error: 'Ngrok API unreachable'});
+  }
+});
+
 // ---------------------------
 // Start server
 // ---------------------------
