@@ -1,0 +1,24 @@
+{
+  "BANANA": [
+    "banana",
+    "bananas",
+    "banán",
+    "banany"
+  ],
+  "BANANA_BIO": [
+    "bio banana",
+    "bio bananas",
+    "bio banán",
+    "organic banana",
+    "banana bio"
+  ],
+  "ANANAS": [
+    "ananas",
+    "pineapple"
+  ],
+  "TOMATO": [
+    "tomato",
+    "tomatoes",
+    "pomidor"
+  ]
+}

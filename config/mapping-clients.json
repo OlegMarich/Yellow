@@ -1,0 +1,98 @@
+{
+  "PENNY_HU": {
+    "short": "PENNY",
+    "full": "Penny Market Hungary",
+    "country": "HU",
+    "legal": "Penny Market Kft."
+  },
+  "SPAR_HU": {
+    "short": "SPAR",
+    "full": "SPAR Hungary",
+    "country": "HU",
+    "legal": "SPAR Magyarország Kft."
+  },
+  "ALDI_HU": {
+    "short": "ALDI",
+    "full": "ALDI Hungary",
+    "country": "HU",
+    "legal": "ALDI Magyarország Élelmiszer Bt."
+  },
+  "ALDI_SI_LUKOVICA": {
+    "short": "ALDI SI",
+    "full": "HOFER / ALDI Slovenia",
+    "country": "SI",
+    "legal": "HOFER trgovina d.o.o."
+  },
+  "LUNYS_SK": {
+    "short": "LUNYS",
+    "full": "LUNYS Slovakia",
+    "country": "SK",
+    "legal": "LUNYS s.r.o."
+  },
+  "SPAR_HR": {
+    "short": "SPAR HR",
+    "full": "SPAR Croatia",
+    "country": "HR",
+    "legal": "SPAR Hrvatska d.o.o."
+  },
+  "HORTI_SK": {
+    "short": "HORTI",
+    "full": "HORTI Slovakia",
+    "country": "SK",
+    "legal": "HORTI s.r.o."
+  },
+  "TERNO_SK": {
+    "short": "TERNO",
+    "full": "TERNO / KRAJ Slovakia",
+    "country": "SK",
+    "legal": "TERNO real estate s.r.o."
+  },
+  "LIDL_HU": {
+    "short": "LIDL",
+    "full": "LIDL Hungary",
+    "country": "HU",
+    "legal": "LIDL Magyarország Kereskedelmi Bt."
+  },
+  "CBA_HU": {
+    "short": "CBA",
+    "full": "CBA Hungary",
+    "country": "HU",
+    "legal": "CBA Kereskedelmi Kft."
+  },
+  "METRO_HU": {
+    "short": "METRO",
+    "full": "METRO Hungary",
+    "country": "HU",
+    "legal": "METRO Kereskedelmi Kft."
+  },
+  "SPAR_SI": {
+    "short": "SPAR SI",
+    "full": "SPAR Slovenia",
+    "country": "SI",
+    "legal": "SPAR Slovenija d.o.o."
+  },
+  "BIEDRONKA_SK": {
+    "short": "BIEDRONKA",
+    "full": "JMS Biedronka Slovakia",
+    "country": "SK",
+    "legal": "JMS Biedronka"
+  },
+  "IVANYI_HU": {
+    "short": "IVANYI",
+    "full": "IVÁNYI Zöldségkert Kft.",
+    "country": "HU",
+    "legal": "IVÁNYI Zöldségkert Kft."
+  },
+  "OBIM_SK": {
+    "short": "OBIM",
+    "full": "OBIM Slovakia",
+    "country": "SK",
+    "legal": "OBIM Slovakia"
+  },
+  "LABAS_SK": {
+    "short": "LABAS",
+    "full": "LABAS Slovakia",
+    "country": "SK",
+    "legal": "LABAS s.r.o."
+  }
+}

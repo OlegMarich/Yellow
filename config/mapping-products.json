@@ -1,0 +1,33 @@
+{
+  "BANANA": {
+    "id": "BANANA",
+    "name": "BANANA",
+    "boxPerPal": 32,
+    "weightPerBox": 19.79,
+    "palType": "EUR"
+  },
+
+  "BANANA_BIO": {
+    "id": "BANANA_BIO",
+    "name": "BIO BANANA",
+    "boxPerPal": 32,
+    "weightPerBox": 19.79,
+    "palType": "EUR"
+  },
+
+  "ANANAS": {
+    "id": "ANANAS",
+    "name": "ANANAS",
+    "boxPerPal": 80,
+    "weightPerBox": 12.95,
+    "palType": "IND"
+  },
+
+  "TOMATO": {
+    "id": "TOMATO",
+    "name": "TOMATO",
+    "boxPerPal": 56,
+    "weightPerBox": 7,
+    "palType": "EUR"
+  }
+}

@@ -1,0 +1,495 @@
+{
+  "Alsonemedi": {
+    "BANANA": {
+      "boxPerPal": 32,
+      "weightPerBox": 19.79,
+      "palType": "EUR"
+    },
+    "BANANA_BIO": {
+      "boxPerPal": 32,
+      "weightPerBox": 19.79,
+      "palType": "EUR"
+    },
+    "ANANAS": {
+      "boxPerPal": 80,
+      "weightPerBox": 12.95,
+      "palType": "IND"
+    },
+    "TOMATO": {
+      "boxPerPal": 56,
+      "weightPerBox": 7,
+      "palType": "EUR"
+    }
+  },
+  "Veszprem": {
+    "BANANA": {
+      "boxPerPal": 32,
+      "weightPerBox": 19.79,
+      "palType": "EUR"
+    },
+    "BANANA_BIO": {
+      "boxPerPal": 32,
+      "weightPerBox": 19.79,
+      "palType": "EUR"
+    },
+    "ANANAS": {
+      "boxPerPal": 80,
+      "weightPerBox": 12.95,
+      "palType": "IND"
+    },
+    "TOMATO": {
+      "boxPerPal": 56,
+      "weightPerBox": 7,
+      "palType": "EUR"
+    }
+  },
+  "Karcag": {
+    "BANANA": {
+      "boxPerPal": 32,
+      "weightPerBox": 19.79,
+      "palType": "EUR"
+    },
+    "BANANA_BIO": {
+      "boxPerPal": 32,
+      "weightPerBox": 19.79,
+      "palType": "EUR"
+    },
+    "ANANAS": {
+      "boxPerPal": 80,
+      "weightPerBox": 12.95,
+      "palType": "IND"
+    },
+    "TOMATO": {
+      "boxPerPal": 56,
+      "weightPerBox": 7,
+      "palType": "EUR"
+    }
+  },
+  "Bicske": {
+    "BANANA": {
+      "boxPerPal": 32,
+      "weightPerBox": 19.79,
+      "palType": "EUR"
+    },
+    "BANANA_BIO": {
+      "boxPerPal": 32,
+      "weightPerBox": 19.79,
+      "palType": "EUR"
+    },
+    "ANANAS": {
+      "boxPerPal": 80,
+      "weightPerBox": 12.95,
+      "palType": "IND"
+    },
+    "TOMATO": {
+      "boxPerPal": 56,
+      "weightPerBox": 7,
+      "palType": "EUR"
+    }
+  },
+  "Ullo": {
+    "BANANA": {
+      "boxPerPal": 32,
+      "weightPerBox": 19.79,
+      "palType": "EUR"
+    },
+    "BANANA_BIO": {
+      "boxPerPal": 32,
+      "weightPerBox": 19.79,
+      "palType": "EUR"
+    },
+    "ANANAS": {
+      "boxPerPal": 80,
+      "weightPerBox": 12.95,
+      "palType": "IND"
+    },
+    "TOMATO": {
+      "boxPerPal": 56,
+      "weightPerBox": 7,
+      "palType": "EUR"
+    }
+  },
+  "Biatorbagy": {
+    "BANANA": {
+      "boxPerPal": 28,
+      "weightPerBox": 19.79,
+      "palType": "EUR"
+    },
+    "ANANAS": {
+      "boxPerPal": 40,
+      "weightPerBox": 12.95,
+      "palType": "EUR"
+    },
+    "BANANA_BIO": {
+      "boxPerPal": 32,
+      "weightPerBox": 19.79,
+      "palType": "EUR"
+    },
+    "TOMATO": {
+      "boxPerPal": 56,
+      "weightPerBox": 7,
+      "palType": "EUR"
+    }
+  },
+  "Lukovica": {
+    "BANANA": [
+      {
+        "type": "PHP4",
+        "boxPerPal": 4,
+        "weightPerBox": 20.29,
+        "palType": "PHP mini"
+      },
+      {
+        "type": "PHP8",
+        "boxPerPal": 8,
+        "weightPerBox": 20.29,
+        "palType": "PHP mini"
+      }
+    ]
+  },
+  "BANANA_BIO": {
+    "boxPerPal": 32,
+    "weightPerBox": 19.79,
+    "palType": "EUR"
+  },
+  "ANANAS": {
+    "boxPerPal": 40,
+    "weightPerBox": 12.95,
+    "palType": "IND"
+  },
+  "TOMATO": {
+    "boxPerPal": 56,
+    "weightPerBox": 7,
+    "palType": "EUR"
+  },
+  "Ecser": {
+    "BANANA": {
+      "boxPerPal": 48,
+      "weightPerBox": 19.79,
+      
+      "palType": "IND"
+    },
+    "BANANA_BIO": {
+      "boxPerPal": 32,
+      "weightPerBox": 19.79,
+      "palType": "EUR"
+    },
+    "ANANAS": {
+      "boxPerPal": 80,
+      "weightPerBox": 12.95,
+      "palType": "IND"
+    },
+    "TOMATO": {
+      "boxPerPal": 56,
+      "weightPerBox": 7,
+      "palType": "EUR"
+    }
+  },
+  "Szigetszentmiklos": {
+    "BANANA": {
+      "boxPerPal": 48,
+      "weightPerBox": 19.79,
+      "palType": "IND"
+    },
+    "BANANA_BIO": {
+      "boxPerPal": 32,
+      "weightPerBox": 19.79,
+      "palType": "EUR"
+    },
+    "ANANAS": {
+      "boxPerPal": 80,
+      "weightPerBox": 12.95,
+      "palType": "IND"
+    },
+    "TOMATO": {
+      "boxPerPal": 56,
+      "weightPerBox": 7,
+      "palType": "EUR"
+    }
+  },
+  "Szekesfehervar": {
+    "BANANA": {
+      "boxPerPal": 48,
+      "weightPerBox": 19.79,
+      "palType": "IND"
+    },
+    "BANANA_BIO": {
+      "boxPerPal": 32,
+      "weightPerBox": 19.79,
+      "palType": "EUR"
+    },
+    "ANANAS": {
+      "boxPerPal": 80,
+      "weightPerBox": 12.95,
+      "palType": "IND"
+    },
+    "TOMATO": {
+      "boxPerPal": 56,
+      "weightPerBox": 7,
+      "palType": "EUR"
+    }
+  },
+  "Hejokurt": {
+    "BANANA": {
+      "boxPerPal": 48,
+      "weightPerBox": 19.79,
+      "palType": "IND"
+    },
+    "BANANA_BIO": {
+      "boxPerPal": 32,
+      "weightPerBox": 19.79,
+      "palType": "EUR"
+    },
+    "ANANAS": {
+      "boxPerPal": 80,
+      "weightPerBox": 12.95,
+      "palType": "IND"
+    },
+    "TOMATO": {
+      "boxPerPal": 56,
+      "weightPerBox": 7,
+      "palType": "EUR"
+    }
+  },
+  "Alsonemedi CBA": {
+    "BANANA": {
+      "boxPerPal": 48,
+      "weightPerBox": 19.79,
+      "palType": "IND"
+    },
+    "BANANA_BIO": {
+      "boxPerPal": 32,
+      "weightPerBox": 19.79,
+      "palType": "EUR"
+    },
+    "ANANAS": {
+      "boxPerPal": 80,
+      "weightPerBox": 12.95,
+      "palType": "IND"
+    },
+    "TOMATO": {
+      "boxPerPal": 56,
+      "weightPerBox": 7,
+      "palType": "EUR"
+    }
+  },
+  "Vecses": {
+    "BANANA": {
+      "boxPerPal": 32,
+      "weightPerBox": 19.79,
+      "palType": "EUR"
+    },
+    "BANANA_BIO": {
+      "boxPerPal": 32,
+      "weightPerBox": 19.79,
+      "palType": "EUR"
+    },
+    "ANANAS": {
+      "boxPerPal": 80,
+      "weightPerBox": 12.95,
+      "palType": "IND"
+    },
+    "TOMATO": {
+      "boxPerPal": 56,
+      "weightPerBox": 7,
+      "palType": "EUR"
+    }
+  },
+  "Voderady": {
+    "BANANA": {
+      "boxPerPal": 28,
+      "weightPerBox": 19.79,
+      "palType": "EUR"
+    },
+    "BANANA_BIO": {
+      "boxPerPal": 32,
+      "weightPerBox": 19.79,
+      "palType": "EUR"
+    },
+    "ANANAS": {
+      "boxPerPal": 80,
+      "weightPerBox": 12.95,
+      "palType": "IND"
+    },
+    "TOMATO": {
+      "boxPerPal": 72,
+      "weightPerBox": 7,
+      "palType": "EUR"
+    }
+  },
+  "Nagytarcsa warehouse": {
+    "BANANA": {
+      "boxPerPal": 48,
+      "weightPerBox": 19.79,
+      "palType": "IND"
+    },
+    "BANANA_BIO": {
+      "boxPerPal": 32,
+      "weightPerBox": 19.79,
+      "palType": "EUR"
+    },
+    "ANANAS": {
+      "boxPerPal": 80,
+      "weightPerBox": 12.95,
+      "palType": "IND"
+    },
+    "TOMATO": {
+      "boxPerPal": 56,
+      "weightPerBox": 7,
+      "palType": "EUR"
+    }
+  },
+  "Nova Dubnica": {
+    "BANANA": {
+      "boxPerPal": 48,
+      "weightPerBox": 19.79,
+      "palType": "IND"
+    },
+    "BANANA_BIO": {
+      "boxPerPal": 32,
+      "weightPerBox": 19.79,
+      "palType": "EUR"
+    },
+    "ANANAS": {
+      "boxPerPal": 80,
+      "weightPerBox": 12.95,
+      "palType": "IND"
+    },
+    "TOMATO": {
+      "boxPerPal": 56,
+      "weightPerBox": 7,
+      "palType": "EUR"
+    }
+  },
+  "Kosice": {
+    "BANANA": {
+      "boxPerPal": 54,
+      "weightPerBox": 19.79,
+      "palType": "IND"
+    },
+    "BANANA_BIO": {
+      "boxPerPal": 32,
+      "weightPerBox": 19.79,
+      "palType": "EUR"
+    },
+    "ANANAS": {
+      "boxPerPal": 80,
+      "weightPerBox": 12.95,
+      "palType": "IND"
+    },
+    "TOMATO": {
+      "boxPerPal": 56,
+      "weightPerBox": 7,
+      "palType": "EUR"
+    }
+  },
+  "Labas": {
+    "BANANA": {
+      "boxPerPal": 48,
+      "weightPerBox": 19.79,
+      "palType": "IND"
+    },
+    "BANANA_BIO": {
+      "boxPerPal": 32,
+      "weightPerBox": 19.79,
+      "palType": "EUR"
+    },
+    "ANANAS": {
+      "boxPerPal": 80,
+      "weightPerBox": 12.95,
+      "palType": "IND"
+    },
+    "TOMATO": {
+      "boxPerPal": 56,
+      "weightPerBox": 7,
+      "palType": "EUR"
+    }
+  },
+  "Klinca Sela Indupallets": {
+    "BANANA": {
+      "boxPerPal": 48,
+      "weightPerBox": 19.79,
+      "palType": "EUR"
+    }
+  },
+  "Ivanka pri Dunaji Color 3": {
+    "BANANA": {
+      "boxPerPal": 28,
+      "weightPerBox": 19.79,
+      "palType": "EUR"
+    }
+  },
+  "Ivanka pri Dunaji Color 3.5": {
+    "BANANA": {
+      "boxPerPal": 28,
+      "weightPerBox": 19.79,
+      "palType": "EUR"
+    }
+  },
+  "Ljubljana": {
+    "BANANA": {
+      "boxPerPal": 48,
+      "weightPerBox": 19.79,
+      "palType": "IND"
+    },
+    "BANANA_BIO": {
+      "boxPerPal": 32,
+      "weightPerBox": 19.79,
+      "palType": "EUR"
+    },
+    "ANANAS": {
+      "boxPerPal": 80,
+      "weightPerBox": 12.95,
+      "palType": "IND"
+    },
+    "TOMATO": {
+      "boxPerPal": 56,
+      "weightPerBox": 7,
+      "palType": "EUR"
+    }
+  },
+  "Bratislava": {
+    "BANANA": {
+      "boxPerPal": 48,
+      "weightPerBox": 19.79,
+      "palType": "IND"
+    },
+    "BANANA_BIO": {
+      "boxPerPal": 32,
+      "weightPerBox": 19.79,
+      "palType": "EUR"
+    },
+    "ANANAS": {
+      "boxPerPal": 80,
+      "weightPerBox": 12.95,
+      "palType": "IND"
+    },
+    "TOMATO": {
+      "boxPerPal": 56,
+      "weightPerBox": 7,
+      "palType": "EUR"
+    }
+  },
+  "Poprad": {
+    "BANANA": {
+      "boxPerPal": 48,
+      "weightPerBox": 19.79,
+      "palType": "IND"
+    },
+    "BANANA_BIO": {
+      "boxPerPal": 32,
+      "weightPerBox": 19.79,
+      "palType": "EUR"
+    },
+    "ANANAS": {
+      "boxPerPal": 80,
+      "weightPerBox": 12.95,
+      "palType": "IND"
+    },
+    "TOMATO": {
+      "boxPerPal": 56,
+      "weightPerBox": 7,
+      "palType": "EUR"
+    }
+  }
+}

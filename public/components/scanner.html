@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="uk">
+<html lang="en">
 
 <head>
   <meta charset="UTF-8">
@@ -25,58 +25,66 @@
     <section class="page__section">
       <div class="container">
 
-        <!-- QR блок (для підключення телефону) -->
+        <!-- QR connection -->
         <div class="scanner-qr">
-          <h3 class="scanner-qr__title">📱 Підключення телефону</h3>
+          <h3 class="scanner-qr__title">📱 Phone Connection</h3>
           <p class="scanner-qr__description">
-            Скануй QR‑код або натисни кнопку, щоб відкрити сканер у браузері на телефоні.
+            Scan the QR code or tap the button to open the scanner in your phone’s browser.
           </p>
-          <div id="qrBox" class="scanner-qr__code"></div>
+
+          <div class="scanner-qr__box">
+            <div id="qrBox" class="scanner-qr__code"></div>
+            <div id="qrStatus" class="scanner-qr__status"></div>
+          </div>
         </div>
 
-        <!-- Основний сканер -->
+        <!-- Main scanner -->
         <div class="scanner">
+
           <h2 class="section__title">📦 Scanner</h2>
 
           <label class="form__label">
-            Дата:
+            Date:
             <input type="date" id="scanDate" class="input">
           </label>
 
-          <button id="loadOrders" class="button button--primary button--full">Завантажити замовлення</button>
+          <button id="loadOrders" class="button button--primary button--full">
+            Load Orders
+          </button>
 
           <label class="form__label">
-            Клієнт:
+            Client:
             <select id="clientSelect" class="select">
-              <div id="orderStatus" class="order-status"></div>
-              <option value="">— виберіть клієнта —</option>
+              <option value="">— select a client —</option>
             </select>
           </label>
 
+          <div id="orderStatus" class="order-status"></div>
+
           <label class="form__label">
-            Тип палети:
+            Pallet Type:
             <select id="palletType" class="select">
-              <option value="EURO PALLETS">Євро (4 стовпчики)</option>
-              <option value="IND. PALLETS">Індустріальна (6 стовпчиків)</option>
-              <option value="PHP mini">PHP mini (2 стовпчики)</option>
+              <option value="EURO PALLETS">Euro (4 columns)</option>
+              <option value="IND. PALLETS">Industrial (6 columns)</option>
+              <option value="PHP mini">PHP mini (2 columns)</option>
             </select>
           </label>
 
           <label class="form__label">
-            Ящиків на палеті:
-            <input type="number" id="palletHeight" class="input" value="48" inputmode="numeric">
+            Boxes per pallet:
+            <input type="number" id="palletHeight" class="input" inputmode="numeric">
           </label>
 
           <label class="form__label">
-            Режим:
+            Mode:
             <select id="scanMode" class="select">
-              <option value="auto">AUTO — швидке сканування</option>
-              <option value="manual">MANUAL — ручний лічильник</option>
+              <option value="auto">AUTO — fast scanning</option>
+              <option value="manual">MANUAL — manual counter</option>
             </select>
           </label>
 
           <label class="form__label">
-            Кількість рядків:
+            Number of rows:
             <input type="number" id="rowsCount" class="input" value="1" inputmode="numeric">
           </label>
 
@@ -84,39 +92,37 @@
 
           <div class="pallet-sides">
             <label class="form__label">
-              Сторона 1:
+              Side 1:
               <input type="number" id="side1" class="input side-input" value="0" inputmode="numeric">
             </label>
 
             <label class="form__label">
-              Сторона 2:
+              Side 2:
               <input type="number" id="side2" class="input side-input" value="0" inputmode="numeric">
             </label>
           </div>
 
           <div id="palletCheck" class="scanner__info"></div>
 
-          <label class="form__label">
-            Скан контейнера:
-          </label>
+          <label class="form__label">Container scan:</label>
 
           <button id="startVideoScanner" class="button button--primary button--full">
-            🎥 Увімкнути відео‑сканер
+            🎥 Enable Video Scanner
           </button>
 
-          <video id="videoScanner" class="video-scanner" autoplay playsinline muted
-            style="width:100%; max-height:240px; display:none; border-radius:8px; margin-top:10px;">
-          </video>
+          <video id="videoScanner" class="video-scanner" autoplay playsinline muted></video>
 
-          <button id="cameraScanBtn" class="button button--primary button--big button--full">📷 Сканувати фото</button>
+          <button id="cameraScanBtn" class="button button--primary button--big button--full">
+            📷 Scan Photo
+          </button>
           <input type="file" id="cameraInput" accept="image/*" capture="environment" hidden>
 
           <img id="preview" class="scanner__preview">
 
-          <input type="text" id="scanInput" class="input" placeholder="Сканований номер..." autocomplete="off">
+          <input type="text" id="scanInput" class="input" placeholder="Scanned number..." autocomplete="off">
 
           <label class="form__label">
-            Кількість:
+            Quantity:
             <div class="qty">
               <input type="number" id="qtyInput" class="input qty__input" value="1" inputmode="numeric">
               <button id="manualPlusBtn" class="button button--primary qty__plus" type="button">+</button>
@@ -124,55 +130,57 @@
           </label>
 
           <div class="section__actions">
-            <button id="finishBtn" class="button button--primary button--full">Завершити клієнта</button>
+            <button id="finishBtn" class="button button--primary button--full">Finish Client</button>
             <button id="undoBtn" class="button button--secondary button--full">↩️ Undo</button>
           </div>
 
           <div id="log" class="scanner__log"></div>
 
+          <!-- Modal keypad -->
+          <div id="manualKeyboard" class="modal-keypad">
+            <div class="modal-keypad__content">
+
+              <div class="modal-keypad__title">Add quantity:</div>
+
+              <input id="manualQty" type="text" class="modal-keypad__input" readonly>
+
+              <div class="modal-keypad__grid">
+                <button class="modal-keypad__key" onclick="window.numPress(1)">1</button>
+                <button class="modal-keypad__key" onclick="window.numPress(2)">2</button>
+                <button class="modal-keypad__key" onclick="window.numPress(3)">3</button>
+
+                <button class="modal-keypad__key" onclick="window.numPress(4)">4</button>
+                <button class="modal-keypad__key" onclick="window.numPress(5)">5</button>
+                <button class="modal-keypad__key" onclick="window.numPress(6)">6</button>
+
+                <button class="modal-keypad__key" onclick="window.numPress(7)">7</button>
+                <button class="modal-keypad__key" onclick="window.numPress(8)">8</button>
+                <button class="modal-keypad__key" onclick="window.numPress(9)">9</button>
+
+                <button class="modal-keypad__key" onclick="window.backspaceQty()">←</button>
+                <button class="modal-keypad__key" onclick="window.numPress(0)">0</button>
+                <button class="modal-keypad__key" onclick="window.clearQty()">⌧</button>
+              </div>
+
+              <div class="modal-keypad__actions">
+                <button class="modal-keypad__btn button--primary" onclick="window.confirmManualQty()">OK</button>
+                <button class="modal-keypad__btn button--secondary"
+                  onclick="window.closeManualKeyboard()">Cancel</button>
+              </div>
+
+            </div>
+          </div>
+
           <div class="section__actions">
             <a href="/index.html" class="button button--secondary button--full">← Back to Home</a>
           </div>
+
         </div>
 
       </div>
     </section>
 
     <footer class="page__footer"></footer>
-  </div>
-
-  <!-- Модальне вікно цифрової клавіатури -->
-  <div id="manualKeyboard" class="modal-keypad">
-    <div class="modal-keypad__content">
-
-      <div class="modal-keypad__title">Додати кількість:</div>
-
-      <input id="manualQty" type="text" class="modal-keypad__input" readonly>
-
-      <div class="modal-keypad__grid">
-        <button class="modal-keypad__key" onclick="window.numPress(1)">1</button>
-        <button class="modal-keypad__key" onclick="window.numPress(2)">2</button>
-        <button class="modal-keypad__key" onclick="window.numPress(3)">3</button>
-
-        <button class="modal-keypad__key" onclick="window.numPress(4)">4</button>
-        <button class="modal-keypad__key" onclick="window.numPress(5)">5</button>
-        <button class="modal-keypad__key" onclick="window.numPress(6)">6</button>
-
-        <button class="modal-keypad__key" onclick="window.numPress(7)">7</button>
-        <button class="modal-keypad__key" onclick="window.numPress(8)">8</button>
-        <button class="modal-keypad__key" onclick="window.numPress(9)">9</button>
-
-        <button class="modal-keypad__key" onclick="window.backspaceQty()">←</button>
-        <button class="modal-keypad__key" onclick="window.numPress(0)">0</button>
-        <button class="modal-keypad__key" onclick="window.clearQty()">⌧</button>
-      </div>
-
-      <div class="modal-keypad__actions">
-        <button class="modal-keypad__btn button--primary" onclick="window.confirmManualQty()">OK</button>
-        <button class="modal-keypad__btn button--secondary" onclick="window.closeManualKeyboard()">Cancel</button>
-      </div>
-
-    </div>
   </div>
 
   <script type="module" src="/js/scanner.js"></script>

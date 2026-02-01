@@ -59,19 +59,9 @@ body {
   padding: 40px 16px;
 }
 
-/* CLASSIC CONTAINER */
 .container {
   max-width: 1200px;
   margin: 0 auto;
-  padding: 0 16px;
-}
-
-/* INDEX PAGE CENTERING */
-.page--index .container {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 10px;
 }
 
 /* ============================================================
@@ -138,10 +128,6 @@ body {
   font-size: 1.25rem;
 }
 
-.button--full {
-  width: 100%;
-}
-
 /* ============================================================
    INPUTS & SELECTS
    ============================================================ */
@@ -190,7 +176,7 @@ body {
 }
 
 /* ============================================================
-   GLOBAL MODALS
+   MODALS
    ============================================================ */
 
 .modal {
@@ -231,6 +217,23 @@ body {
 }
 
 /* ============================================================
+   HERO (index)
+   ============================================================ */
+
+.section__actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 12px;
+  margin-top: 20px;
+}
+@media (max-width: 540px) {
+  .section__actions {
+    /* flex-direction: row; */
+    flex-direction: column;
+  }
+}
+/* ============================================================
    SCANNER
    ============================================================ */
 
@@ -242,7 +245,6 @@ body {
   width: 100%;
   border-radius: 12px;
   margin-top: 12px;
-  display: none;
 }
 
 .scanner__log {
@@ -255,137 +257,92 @@ body {
   font-size: 0.9rem;
 }
 
-.scanner__log-item {
-  display: flex;
-  justify-content: space-between;
-  padding: 6px 0;
-  border-bottom: 1px solid #e5e7eb;
+.flash-success {
+  background: #c8ffc8 !important;
+  transition: background 0.4s ease;
 }
 
-/* ============================================================
-   ORDER STATUS
-   ============================================================ */
-
-.order-status {
-  padding: 12px;
-  border-radius: 8px;
-  font-weight: 600;
-  margin-bottom: 16px;
-  text-align: center;
-}
-
-.order-status--new {
-  background: #d1fae5;
-  color: #065f46;
-}
-
-.order-status--progress {
-  background: #fef3c7;
-  color: #92400e;
-}
-
-.order-status--completed {
-  background: #dbeafe;
-  color: #1e3a8a;
-}
-
-.order-status--canceled {
-  background: #fee2e2;
-  color: #991b1b;
-}
-
-/* ============================================================
-   QTY BLOCK
-   ============================================================ */
-
-.qty {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-}
-
-.qty__input {
-  flex: 1;
-}
-
-.qty__plus {
-  width: 56px;
-  height: 56px;
-  font-size: 28px;
-  border-radius: 8px;
-  padding: 0;
-}
-
-/* ============================================================
-   MODAL KEYPAD
-   ============================================================ */
-
-.modal-keypad {
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.6);
-  display: none;
-  justify-content: center;
-  align-items: center;
-  padding: 20px;
-  z-index: 999;
-}
-
-.modal-keypad.active {
-  display: flex;
-}
-
-.modal-keypad__content {
+/* QR block (desktop only) */
+.scanner-qr {
   background: var(--white);
-  width: 100%;
-  max-width: 360px;
-  border-radius: 12px;
   padding: 20px;
+  border-radius: 12px;
+  margin-bottom: 24px;
+  text-align: center;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+}
+
+.scanner-qr__title {
+  font-size: 1.25rem;
+  font-weight: 600;
+}
+
+.scanner-qr__description {
+  color: var(--text-light);
+  margin-bottom: 12px;
+}
+
+/* ============================================================
+   CHAMBERS (Ripening Plan)
+   ============================================================ */
+
+.chambers {
+  display: flex;
+  justify-content: center;
+  gap: 2rem;
+  flex-wrap: wrap;
+  margin-top: 20px;
+}
+
+.chambers__left-side,
+.chambers__right-side {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 0.75rem;
 }
 
-.modal-keypad__title {
-  font-size: 20px;
-  font-weight: 600;
-  text-align: center;
+.page__chamber {
+  position: relative;
+  width: 8.75rem;
+  height: 10rem;
+  background: #444;
+  cursor: pointer;
+  perspective: 1000px;
+  border-radius: 6px;
+  overflow: hidden;
+  transition: transform 0.2s ease;
 }
 
-.modal-keypad__input {
-  width: 100%;
-  font-size: 28px;
-  padding: 12px;
-  text-align: center;
-  border: 2px solid #ddd;
-  border-radius: 8px;
+.page__chamber:hover {
+  transform: scale(1.03);
 }
 
-.modal-keypad__grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 12px;
+.page__chamber::after {
+  content: attr(data-num);
+  position: absolute;
+  top: 0.5rem;
+  left: 50%;
+  transform: translateX(-50%);
+  color: white;
+  font-weight: 700;
+  font-size: 1.4rem;
+  z-index: 3;
 }
 
-.modal-keypad__key {
-  font-size: 24px;
-  padding: 14px 0;
-  border-radius: 8px;
-  background: #f2f2f2;
-  border: 1px solid #ccc;
+.page__chamber-door {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(var(--yellow), var(--yellow-dark));
+  transform-origin: bottom center;
+  transition:
+    transform 1.2s cubic-bezier(0.55, 0.068, 0.265, 1.55),
+    box-shadow 0.5s ease;
+  z-index: 2;
 }
 
-.modal-keypad__actions {
-  display: flex;
-  justify-content: space-between;
-  gap: 12px;
-}
-
-.modal-keypad__btn {
-  flex: 1;
-  padding: 14px 0;
-  font-size: 18px;
-  border-radius: 8px;
+.page__chamber.open .page__chamber-door {
+  transform: translateY(-100%) rotateX(10deg);
+  box-shadow: 0 1rem 1.5rem rgba(0, 0, 0, 0.5);
 }
 
 /* ============================================================
@@ -411,21 +368,288 @@ body {
   .scanner-qr {
     display: none;
   }
-}
-@media (max-width: 540px) {
-  .section__actions {
+
+  .chambers {
     flex-direction: column;
-    align-items: stretch;
+    align-items: center;
   }
 
-  .section__actions a {
-    width: 100%;
-    margin: 6px 0;
-    transition: transform 0.25s, box-shadow 0.25s;
+  .chambers__left-side,
+  .chambers__right-side {
+    flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: center;
   }
 
-  .section__actions a:nth-child(1) { animation-delay: 0.3s; }
-  .section__actions a:nth-child(2) { animation-delay: 0.45s; }
-  .section__actions a:nth-child(3) { animation-delay: 0.6s; }
-  .section__actions a:nth-child(4) { animation-delay: 0.75s; }
+  .page__chamber {
+    width: 6.5rem;
+    height: 7.5rem;
+  }
+
+  .page__chamber::after {
+    font-size: 1.2rem;
+  }
+}
+
+/* ============================================================
+   MODAL KEYPAD (Add Quantity)
+   ============================================================ */
+
+.modal-keypad {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  display: none;
+  justify-content: center;
+  align-items: center;
+  z-index: 300;
+}
+
+.modal-keypad.active {
+  display: flex;
+}
+
+.modal-keypad__content {
+  background: var(--white);
+  padding: 28px;
+  border-radius: 16px;
+  width: 90%;
+  max-width: 360px;
+  text-align: center;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.18);
+  animation: keypadFade 0.25s ease;
+}
+
+@keyframes keypadFade {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.modal-keypad__title {
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin-bottom: 16px;
+  color: var(--text);
+}
+
+.modal-keypad__input {
+  width: 100%;
+  padding: 14px;
+  font-size: 1.4rem;
+  font-weight: 600;
+  text-align: center;
+  border-radius: 10px;
+  border: 1px solid #d1d5db;
+  margin-bottom: 20px;
+  background: var(--gray);
+}
+
+.modal-keypad__grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.modal-keypad__key {
+  padding: 16px 0;
+  font-size: 1.25rem;
+  font-weight: 600;
+  background: var(--white);
+  border-radius: 10px;
+  border: 1px solid #d1d5db;
+  cursor: pointer;
+  transition: 0.2s;
+}
+
+.modal-keypad__key:hover {
+  background: var(--gray);
+}
+
+.modal-keypad__actions {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+}
+
+.modal-keypad__btn {
+  flex: 1;
+  padding: 14px;
+  border-radius: 10px;
+  font-size: 1.1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: 0.25s;
+  border: none;
+}
+
+.modal-keypad__btn.button--primary {
+  background: var(--primary);
+  color: var(--white);
+}
+
+.modal-keypad__btn.button--primary:hover {
+  background: var(--primary-hover);
+}
+
+.modal-keypad__btn.button--secondary {
+  background: transparent;
+  border: 1px solid #d1d5db;
+  color: var(--text);
+}
+
+.modal-keypad__btn.button--secondary:hover {
+  background: var(--gray);
+}
+
+/* ============================================================
+   SCANNER — Unified Premium Minimalism
+   ============================================================ */
+
+/* Scanner container */
+.scanner {
+  background: var(--white);
+  padding: 24px;
+  border-radius: 16px;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.08);
+  margin-top: 24px;
+}
+
+/* Info blocks */
+.scanner__info {
+  background: var(--gray);
+  padding: 12px 16px;
+  border-radius: 10px;
+  font-size: 0.95rem;
+  margin-bottom: 16px;
+  color: var(--text-light);
+}
+
+/* Order status */
+.order-status {
+  background: var(--gray);
+  padding: 12px;
+  border-radius: 10px;
+  margin-bottom: 16px;
+  font-size: 0.95rem;
+  color: var(--text-light);
+}
+
+/* Video scanner */
+.video-scanner {
+  width: 100%;
+  max-height: 240px;
+  border-radius: 12px;
+  margin-top: 12px;
+  background: #000;
+  display: none;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+}
+
+/* Preview image */
+.scanner__preview {
+  width: 100%;
+  border-radius: 12px;
+  margin-top: 12px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+}
+
+/* Log */
+.scanner__log {
+  background: var(--gray);
+  border-radius: 12px;
+  padding: 16px;
+  height: 200px;
+  overflow-y: auto;
+  margin-top: 24px;
+  font-size: 0.9rem;
+  line-height: 1.4;
+  box-shadow: inset 0 0 8px rgba(0, 0, 0, 0.05);
+}
+
+/* Qty block */
+.qty {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 6px;
+}
+
+.qty__input {
+  flex: 1;
+  padding: 12px 16px;
+  border-radius: 10px;
+  border: 1px solid #d1d5db;
+  background: var(--white);
+  font-size: 1.1rem;
+}
+
+.qty__plus {
+  padding: 12px 18px;
+  font-size: 1.4rem;
+  border-radius: 10px;
+  cursor: pointer;
+}
+
+/* Pallet sides */
+.pallet-sides {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.side-input {
+  font-size: 1.1rem;
+}
+
+/* Section actions unified */
+.section__actions {
+  margin-top: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* Buttons unify */
+.button {
+  border-radius: 10px;
+  padding: 14px 20px;
+  font-size: 1.05rem;
+}
+
+/* Inputs unify */
+.input,
+.select {
+  border-radius: 10px;
+  padding: 14px 16px;
+  font-size: 1.05rem;
+}
+
+/* Labels unify */
+.form__label {
+  font-size: 1rem;
+  margin-bottom: 18px;
+}
+
+/* QR block unify */
+.scanner-qr {
+  border-radius: 16px;
+  padding: 24px;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.08);
+}
+
+.scanner-qr__code {
+  margin: 0 auto;
+}
+
+.scanner-qr__status {
+  margin-top: 12px;
+  color: var(--text-light);
+  font-size: 0.95rem;
 }
