@@ -4,7 +4,7 @@
   "main": "run-all.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "node server.js"
+    "start": "concurrently \"node server.js\" \"C:\\Users\\maric\\AppData\\Roaming\\npm\\ngrok.cmd http 3000\""
   },
   "keywords": [],
   "author": "",
@@ -20,5 +20,8 @@
     "xlsx": "^0.18.5"
   },
   "description": "",
-  "type": "commonjs"
+  "type": "commonjs",
+  "devDependencies": {
+    "concurrently": "^9.2.1"
+  }
 }
