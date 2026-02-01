@@ -87,33 +87,39 @@ async function initUniversalQR() {
     return httpsTunnel ? `${httpsTunnel.public_url}/components/scanner.html` : null;
   };
 
-  // 1) Спочатку показуємо локальний URL
+  // 🔁 1) Спочатку перевіряємо ngrok
   try {
-    const localUrl = await getLocalUrl();
-    renderQR(localUrl);
-    setStatus('Режим: локальна мережа (HTTP)');
+    const ngrokUrl = await getNgrokUrl();
+    if (ngrokUrl) {
+      renderQR(ngrokUrl);
+      setStatus('Режим: віддалений доступ через ngrok (HTTPS)');
+    } else {
+      const localUrl = await getLocalUrl();
+      renderQR(localUrl);
+      setStatus('Режим: локальна мережа (HTTP)');
+    }
   } catch (e) {
-    console.error('QR: не вдалося отримати локальний IP', e);
-    setStatus('Помилка: немає доступу до локального IP');
+    console.warn('QR: ngrok недоступний, пробуємо локальний режим');
+    try {
+      const localUrl = await getLocalUrl();
+      renderQR(localUrl);
+      setStatus('Режим: локальна мережа (HTTP)');
+    } catch (err) {
+      console.error('QR: не вдалося отримати локальний IP', err);
+      setStatus('Помилка: немає доступу до локального IP');
+    }
   }
 
-  // 2) Перевіряємо ngrok кожні 5 секунд
+  // 🔁 2) Перевіряємо ngrok кожні 5 секунд
   const pollNgrok = async () => {
     try {
       const ngrokUrl = await getNgrokUrl();
-
-      if (ngrokUrl) {
+      if (ngrokUrl && currentUrl !== ngrokUrl) {
         renderQR(ngrokUrl);
         setStatus('Режим: віддалений доступ через ngrok (HTTPS)');
-      } else {
-        const localUrl = await getLocalUrl();
-        if (currentUrl !== localUrl) {
-          renderQR(localUrl);
-          setStatus('Режим: локальна мережа (HTTP)');
-        }
       }
     } catch (e) {
-      console.warn('QR: ngrok недоступний, залишаємо локальний режим');
+      console.warn('QR: ngrok недоступний, залишаємо поточний режим');
     }
   };
 
