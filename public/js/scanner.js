@@ -125,6 +125,41 @@ window.addEventListener('DOMContentLoaded', () => {
   initUniversalQR();
 });
 // ============================================================
+// CAMERA CHECK
+// ============================================================
+export async function checkCameraAccess() {
+  const statusBox = document.getElementById('qrStatus') || document.getElementById('cameraStatus');
+
+  const log = (msg) => {
+    console.warn('[CameraCheck]', msg);
+    if (statusBox) statusBox.textContent = msg;
+  };
+
+  // 1. Перевірка HTTPS
+  if (location.protocol !== 'https:' && location.hostname !== 'localhost') {
+    log('⚠️ Camera access blocked: page not served over HTTPS');
+    return false;
+  }
+
+  // 2. Перевірка API
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+    log('❌ Camera API not available: getUserMedia is undefined');
+    return false;
+  }
+
+  // 3. Перевірка доступу
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({video: true});
+    stream.getTracks().forEach((track) => track.stop());
+    log('✅ Camera access confirmed');
+    return true;
+  } catch (err) {
+    log(`❌ Camera access denied: ${err.name}`);
+    return false;
+  }
+}
+
+// ============================================================
 // LOAD ORDERS
 // ============================================================
 
