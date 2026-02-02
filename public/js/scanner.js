@@ -486,7 +486,6 @@ function log(msg) {
 // SCAN LOGIC (NEW MODEL)
 // ============================================================
 
-// звук завершення палети / етапу
 function playContainerBeep() {
   const ctx = new (window.AudioContext || window.webkitAudioContext)();
   const osc = ctx.createOscillator();
@@ -503,7 +502,6 @@ function playContainerBeep() {
   osc.stop(ctx.currentTime + 0.25);
 }
 
-// 🔥 ГОЛОВНА ФУНКЦІЯ — кожен скан = +qty
 function registerBoxScan(code, qty = 1) {
   if (!code) return;
 
