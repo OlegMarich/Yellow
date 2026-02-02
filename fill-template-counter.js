@@ -3,6 +3,9 @@ const XLSX = require('xlsx');
 const path = require('path');
 const fs = require('fs');
 
+// ---------------------------
+// ISO WEEK
+// ---------------------------
 function getISOWeek(dateString) {
   const date = new Date(dateString);
   const temp = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
@@ -13,22 +16,28 @@ function getISOWeek(dateString) {
 }
 
 function generateCounterFromScan(date) {
-  const baseDir = path.join(__dirname, 'output', date);
+  const week = getISOWeek(date);
 
   // ---------------- LOAD TRANSPORT PLAN ----------------
-  const transportPath = path.join(baseDir, `${date}_transportPlanData.json`);
+  const transportPath = path.join(
+    __dirname,
+    'storage',
+    `week${week}`,
+    `${date}_transportPlanData.json`,
+  );
+
   if (!fs.existsSync(transportPath)) {
-    console.error(`❌ Не знайдено ${transportPath}`);
+    console.error(`❌ Не знайдено транспортний план: ${transportPath}`);
     process.exit(1);
   }
+
   const transportData = JSON.parse(fs.readFileSync(transportPath, 'utf8'));
 
   // ---------------- LOAD SCAN RESULTS ----------------
-  const week = getISOWeek(date);
-  const scanDir = path.join(__dirname, 'storage', `week${week}`, date, 'scanResults');
+  const scanDir = path.join(__dirname, 'storage', `week${week}`, 'scan-results', date);
 
   if (!fs.existsSync(scanDir)) {
-    console.error(`❌ Не знайдено папку scanResults для дати ${date}`);
+    console.error(`❌ Не знайдено папку scan-results для дати ${date}`);
     process.exit(1);
   }
 
@@ -41,7 +50,7 @@ function generateCounterFromScan(date) {
   // ---------------- LOAD TEMPLATE ----------------
   const templatePath = path.join(__dirname, 'Counter.xlsx');
   if (!fs.existsSync(templatePath)) {
-    console.error(`❌ Не знайдено шаблон Counter.xlsx за шляхом: ${templatePath}`);
+    console.error(`❌ Не знайдено шаблон Counter.xlsx: ${templatePath}`);
     process.exit(1);
   }
 
@@ -97,7 +106,6 @@ function generateCounterFromScan(date) {
     const summaryRow = row + 1;
     const palletRow = summaryRow + 1;
 
-    // find boxPerPal from transport plan
     const clientOrders = transportData.filter((e) => {
       const name = `${e.customer?.short || 'UNKNOWN'} ${e.locationCountry || ''} - ${e.location || ''}`;
       return name === clientName;
@@ -117,7 +125,10 @@ function generateCounterFromScan(date) {
   workbook.SheetNames = workbook.SheetNames.filter((n) => n !== baseSheetName);
 
   // ---------------- SAVE RESULT ----------------
-  const outFile = path.join(baseDir, `counter_${date}.xlsx`);
+  const outDir = path.join(__dirname, 'output', date);
+  if (!fs.existsSync(outDir)) fs.mkdirSync(outDir, {recursive: true});
+
+  const outFile = path.join(outDir, `counter_${date}.xlsx`);
   XLSX.writeFile(workbook, outFile);
 
   console.log(`✔ Counter.xlsx створено: ${outFile}`);
@@ -129,4 +140,5 @@ if (!date) {
   console.error('❌ Не передано дату як аргумент (формат 2026-01-28)');
   process.exit(1);
 }
+
 generateCounterFromScan(date);
