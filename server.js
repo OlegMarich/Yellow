@@ -3,23 +3,26 @@ const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
 const {exec} = require('child_process');
+const os = require('os');
 
 const app = express();
 const PORT = 3000;
 
+// ---------------------------
+// DIRECTORIES
+// ---------------------------
 const inputDir = path.join(__dirname, 'input');
 const outputDir = path.join(__dirname, 'output');
 const publicDir = path.join(__dirname, 'public');
-// ДОДАТИ ПІСЛЯ public та output
 const storageDir = path.join(__dirname, 'storage');
-app.use('/storage', express.static(storageDir));
 
+app.use('/storage', express.static(storageDir));
 app.use(express.static(publicDir));
 app.use('/output', express.static(outputDir));
 app.use(express.json());
 
 // ---------------------------
-// Multer: upload to /input
+// MULTER
 // ---------------------------
 const storage = multer.diskStorage({
   destination: (req, file, cb) => cb(null, inputDir),
@@ -28,7 +31,7 @@ const storage = multer.diskStorage({
 const upload = multer({storage});
 
 // ---------------------------
-// Helpers
+// HELPERS
 // ---------------------------
 function getISOWeek(dateStr) {
   const date = new Date(dateStr);
@@ -40,151 +43,134 @@ function getISOWeek(dateStr) {
 }
 
 // ---------------------------
-// MAIN ROUTE: /api/run-all
+// API: SAVE SCAN RESULT
 // ---------------------------
-app.post('/api/run-all', upload.array('files', 2), (req, res) => {
-  const userDate = req.query.date;
-
-  if (!userDate || !/^\d{4}-\d{2}-\d{2}$/.test(userDate)) {
-    return res.status(400).json({success: false, message: 'Invalid or missing date parameter'});
-  }
-
-  // ---------------------------
-  // Identify uploaded files
-  // ---------------------------
-  const salesFile = req.files.find((f) => f.originalname.toLowerCase().includes('sales'));
-  const transportFile = req.files.find((f) => f.originalname.toLowerCase().includes('plan'));
-
-  if (!salesFile || !transportFile) {
-    return res.status(400).json({success: false, message: 'Missing sales or transport file'});
-  }
-
-  // ---------------------------
-  // Use single temp directory
-  // ---------------------------
-  const tempDir = path.join(__dirname, 'temp');
-  fs.mkdirSync(tempDir, {recursive: true});
-
-  // Normalize filenames inside temp
-  const salesTemp = path.join(tempDir, 'salesPlan.xlsx');
-  const transportTemp = path.join(tempDir, 'transportPlan.xlsx');
-
-  // Overwrite files every run
-  fs.copyFileSync(salesFile.path, salesTemp);
-  fs.copyFileSync(transportFile.path, transportTemp);
-
-  // ---------------------------
-  // Run parser-sales.js
-  // ---------------------------
-  const week = getISOWeek(userDate);
-  const sheetName = `${week} WEEK`;
-  const parseCmd = `node parser-sales.js "${sheetName}" "${tempDir}"`;
-
-  console.log(`📄 Parsing sales plan: ${parseCmd}`);
-
-  exec(parseCmd, (parseErr, parseOut, parseErrOut) => {
-    if (parseErr) {
-      console.error('❌ Parser error:', parseErr.message);
-      console.error('stderr:', parseErrOut);
-      return res.status(500).json({success: false, message: parseErrOut || parseErr.message});
-    }
-
-    console.log('✅ Parser output:', parseOut);
-
-    // ---------------------------
-    // Run run-all.js with tempDir
-    // ---------------------------
-    const runCmd = `node run-all.js ${userDate} "${tempDir}"`;
-    console.log(`🚀 Running full report: ${runCmd}`);
-
-    exec(runCmd, (err, stdout, stderr) => {
-      if (err) {
-        console.error('❌ Error during script run:', err.message);
-        console.error('stderr:', stderr);
-        return res.status(500).json({success: false, message: stderr || err.message});
-      }
-
-      console.log(stdout);
-
-      const match = stdout.match(/@@@DONE:(\d{4}-\d{2}-\d{2})/);
-      const resultDate = match ? match[1] : null;
-
-      if (!resultDate) {
-        return res.status(500).json({success: false, message: 'No completion confirmation found'});
-      }
-
-      // ---------------------------
-      // Open output folder
-      // ---------------------------
-      const folderPath = path.join(outputDir, resultDate);
-      exec(`start "" "${folderPath}"`, (openErr) => {
-        if (openErr) {
-          console.error('❌ Error opening folder:', openErr);
-        }
-      });
-
-      res.json({
-        success: true,
-        message: 'Report generated successfully',
-        date: resultDate,
-      });
-    });
-  });
-});
-
-app.post('/api/scanner/save', (req, res) => {
+app.post('/api/save-scan-result', async (req, res) => {
   try {
-    const {date, client, scanned, expectedQty, expectedPal, timestamp} = req.body;
+    const fs = require('fs');
+    const path = require('path');
 
-    if (!date || !client || !scanned) {
-      return res.status(400).json({success: false, message: 'Missing required fields'});
-    }
+    const {client, date, boxCounts, totalBoxes, boxesPerPallet, totalPallets} = req.body;
 
-    const dayFolder = path.join(storageDir, 'scanner');
-    fs.mkdirSync(dayFolder, {recursive: true});
+    // Папка для збереження
+    const folder = path.join(__dirname, 'storage', 'scan-results');
+    if (!fs.existsSync(folder)) fs.mkdirSync(folder, {recursive: true});
 
-    const filePath = path.join(dayFolder, `${date}.json`);
+    // Формуємо ім'я файлу
+    const safeClient = client.replace(/[^a-z0-9]/gi, '_');
+    const fileName = `${date}_${safeClient}.json`;
+    const filePath = path.join(folder, fileName);
 
-    let existing = {};
-    if (fs.existsSync(filePath)) {
-      existing = JSON.parse(fs.readFileSync(filePath, 'utf-8'));
-    }
-
-    existing[client] = {
-      scanned,
-      expectedQty,
-      expectedPal,
-      timestamp,
+    // Дані для збереження
+    const data = {
+      client,
+      date,
+      totalBoxes,
+      boxesPerPallet,
+      totalPallets,
+      boxCounts,
+      savedAt: new Date().toISOString(),
     };
 
-    fs.writeFileSync(filePath, JSON.stringify(existing, null, 2));
+    // Запис у файл
+    fs.writeFileSync(filePath, JSON.stringify(data, null, 2), 'utf8');
 
-    res.json({success: true, message: 'Scanner data saved'});
+    res.json({ok: true, file: fileName});
   } catch (err) {
     console.error(err);
-    res.status(500).json({success: false, message: 'Server error'});
+    res.json({ok: false, error: err.message});
   }
 });
 
-app.get('/api/ngrok-url', async (req, res) => {
+const {exec} = require('child_process');
+const path = require('path');
+
+app.post('/api/run-post-scan', async (req, res) => {
+  const {date, client} = req.body;
+
   try {
-    const response = await fetch('http://127.0.0.1:4040/api/tunnels');
-    const data = await response.json();
-    const httpsTunnel = data.tunnels.find((t) => t.public_url.startsWith('https://'));
-    const url = httpsTunnel ? `${httpsTunnel.public_url}/components/scanner.html` : null;
-    res.json({url});
+    const scanBoxPath = path.join(__dirname, 'scanBox.js');
+    const generateCounterPath = path.join(__dirname, 'generateCounterFromScan.js');
+
+    exec(`node "${scanBoxPath}" "${date}" "${client}"`, (err) => {
+      if (err) console.error('scanBox error:', err);
+    });
+
+    exec(`node "${generateCounterPath}" "${date}"`, (err) => {
+      if (err) console.error('generateCounter error:', err);
+    });
+
+    res.json({ok: true});
   } catch (err) {
-    console.error('Ngrok API error:', err);
-    res.status(500).json({error: 'Ngrok API unreachable'});
+    console.error(err);
+    res.json({ok: false, error: err.message});
   }
 });
 
 // ---------------------------
-// Start server
+// API: GENERATE COUNTER
 // ---------------------------
+const generateCounterFromScan = require('./generateCounterFromScan');
 
-const os = require('os');
+app.post('/api/generate-counter', (req, res) => {
+  const {date} = req.body;
 
+  if (!date) {
+    return res.json({ok: false, error: 'Missing date'});
+  }
+
+  try {
+    generateCounterFromScan(date);
+    res.json({
+      ok: true,
+      file: `/output/${date}/counter_${date}.xlsx`,
+    });
+  } catch (err) {
+    console.error(err);
+    res.json({ok: false, error: err.message});
+  }
+});
+
+// ---------------------------
+// API: DOWNLOAD COUNTER
+// ---------------------------
+app.get('/api/download-counter', (req, res) => {
+  const date = req.query.date;
+  const filePath = path.join(outputDir, date, `counter_${date}.xlsx`);
+
+  if (!fs.existsSync(filePath)) {
+    return res.status(404).send('Counter file not found');
+  }
+
+  res.download(filePath, `counter_${date}.xlsx`);
+});
+
+// ---------------------------
+// API: OPEN FOLDER (WEB VIEW)
+// ---------------------------
+app.get('/api/open-folder', (req, res) => {
+  const date = req.query.date;
+  const dir = path.join(outputDir, date);
+
+  if (!fs.existsSync(dir)) {
+    return res.status(404).send('Folder not found');
+  }
+
+  const files = fs.readdirSync(dir);
+
+  const html = `
+    <h2>Files in ${dir}</h2>
+    <ul>
+      ${files.map((f) => `<li><a href="/output/${date}/${f}" download>${f}</a></li>`).join('')}
+    </ul>
+  `;
+
+  res.send(html);
+});
+
+// ---------------------------
+// API: SERVER IP
+// ---------------------------
 function getLocalIP() {
   const interfaces = os.networkInterfaces();
   for (const name of Object.keys(interfaces)) {
@@ -199,11 +185,13 @@ function getLocalIP() {
 
 const IP = getLocalIP();
 
-// ДОДАТИ ПЕРЕД app.listen(...)
 app.get('/api/server-ip', (req, res) => {
   res.json({ip: IP, port: PORT});
 });
 
+// ---------------------------
+// START SERVER
+// ---------------------------
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`🚀 Server running at http://${IP}:${PORT}`);
 });

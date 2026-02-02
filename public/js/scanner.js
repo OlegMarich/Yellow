@@ -17,19 +17,31 @@ function parseQty(v) {
 }
 
 // ============================================================
-// GLOBAL STATE
+// GLOBAL STATE (NEW MODEL)
 // ============================================================
 
 let transportData = [];
 let selectedClient = null;
+
 let expectedQty = 0;
 let expectedPal = 0;
 
-let scanned = {}; // scanned[containerId] = count
 let status = 'NEW'; // NEW / IN_PROGRESS / COMPLETED / CANCELED
 
-let lastPlusTap = 0;
-let plusHoldTimeout = null;
+// 🔥 НОВА МОДЕЛЬ — boxCounts = { code: count }
+let boxCounts = {};
+
+let totalBoxes = 0;
+let boxesPerPallet = 0;
+let expectedPallets = 0;
+let totalPallets = 0;
+
+let side1Count = 0;
+let side2Count = 0;
+
+// DOM refs for sides
+const side1Input = document.getElementById('side1');
+const side2Input = document.getElementById('side2');
 
 // ============================================================
 // SESSION KEY
@@ -42,29 +54,37 @@ function sessionKey() {
 }
 
 // ============================================================
-// UNIVERSAL QR CODE (LOCAL + NGROK AUTO-DETECT)
+// UNIVERSAL QR CODE
 // ============================================================
 
 async function initUniversalQR() {
   const qrBox = document.getElementById('qrBox');
   const qrStatus = document.getElementById('qrStatus');
+  const deviceDot = document.querySelector('.qr-device__dot');
+  const deviceText = document.querySelector('.qr-device__text');
+
   let currentUrl = null;
+  let lastDevicePing = 0;
 
   const setStatus = (text, loading = false) => {
     qrStatus.textContent = text;
     qrStatus.classList.toggle('qr-status--loading', loading);
   };
 
-  const setQRState = (active) => {
-    qrBox.classList.toggle('qr--active', active);
-    qrBox.classList.toggle('qr--disabled', !active);
+  const setDeviceStatus = (connected) => {
+    if (connected) {
+      deviceDot.classList.add('connected');
+      deviceText.textContent = 'Mobile scanner connected';
+    } else {
+      deviceDot.classList.remove('connected');
+      deviceText.textContent = 'No device connected';
+    }
   };
 
   const renderQR = (url) => {
     currentUrl = url;
     qrBox.innerHTML = '';
     new QRCode(qrBox, {text: url, width: 180, height: 180});
-    console.log('QR updated:', url);
   };
 
   const getNgrokUrl = async () => {
@@ -77,61 +97,72 @@ async function initUniversalQR() {
     }
   };
 
-  // 🔥 1) Показуємо сірий QR + анімацію очікування
   const placeholder = 'https://waiting-for-ngrok.example/standby';
   renderQR(placeholder);
-  setStatus('Очікуємо ngrok…', true);
-  setQRState(false);
+  setStatus('Waiting for ngrok…', true);
 
-  // 🔥 2) Перевіряємо ngrok кожні 2 секунди
   const pollNgrok = async () => {
     const ngrokUrl = await getNgrokUrl();
-
     if (ngrokUrl && currentUrl !== ngrokUrl) {
       renderQR(ngrokUrl);
-      setStatus('ngrok підключено — HTTPS активний');
-      setQRState(true);
+      setStatus('ngrok connected — HTTPS active');
     }
   };
 
-  pollNgrok(); // ← додай це
-  setInterval(pollNgrok, 2000);
-}
+  const pollDevice = async () => {
+    try {
+      const res = await fetch('/api/device-ping');
+      const {lastPing} = await res.json();
 
+      if (lastPing && lastPing !== lastDevicePing) {
+        lastDevicePing = lastPing;
+        setDeviceStatus(true);
+      }
+    } catch {
+      setDeviceStatus(false);
+    }
+  };
+
+  pollNgrok();
+  pollDevice();
+
+  setInterval(pollNgrok, 2000);
+  setInterval(pollDevice, 1500);
+}
+window.initUniversalQR = initUniversalQR;
 window.addEventListener('DOMContentLoaded', () => {
   initUniversalQR();
 });
+
 // ============================================================
 // CAMERA CHECK
 // ============================================================
+
 export async function checkCameraAccess() {
   const statusBox = document.getElementById('qrStatus') || document.getElementById('cameraStatus');
 
-  const log = (msg) => {
+  const logLocal = (msg) => {
     console.warn('[CameraCheck]', msg);
     if (statusBox) statusBox.textContent = msg;
   };
 
-  // 1. Перевірка HTTPS
   if (location.protocol !== 'https:' && location.hostname !== 'localhost') {
-    log('⚠️ Camera access blocked: page not served over HTTPS');
+    logLocal('⚠️ Camera access blocked: page not served over HTTPS');
     return false;
   }
 
-  // 2. Перевірка API
   if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-    log('❌ Camera API not available: getUserMedia is undefined');
+    logLocal('❌ Camera API not available');
     return false;
   }
 
-  // 3. Перевірка доступу
   try {
     const stream = await navigator.mediaDevices.getUserMedia({video: true});
     stream.getTracks().forEach((track) => track.stop());
-    log('✅ Camera access confirmed');
+    logLocal('✅ Camera access confirmed');
     return true;
   } catch (err) {
-    log(`❌ Camera access denied: ${err.name}`);
+    logLocal(`❌ Camera access denied: ${err.name}`);
     return false;
   }
 }
@@ -143,7 +174,7 @@ export async function checkCameraAccess() {
 document.getElementById('loadOrders').addEventListener('click', async () => {
   const date = document.getElementById('scanDate').value;
   if (!date) {
-    alert('Виберіть дату');
+    alert('Select a date');
     return;
   }
 
@@ -157,12 +188,26 @@ document.getElementById('loadOrders').addEventListener('click', async () => {
 
     transportData = await res.json();
     fillClientList();
-    log('✅ Замовлення завантажено');
+    log('✅ Order loaded');
   } catch (e) {
     console.error(e);
-    log('❌ Не вдалося завантажити JSON замовлень');
+    log('❌ Failed to load orders JSON');
   }
 });
+
+function initOrderCounters(order) {
+  totalBoxes = Number(order.qty) || 0;
+  boxesPerPallet = Number(order.product?.boxPerPal) || 0;
+  expectedPallets = Number(order.pal) || 0;
+  totalPallets = expectedPallets;
+
+  side1Count = 0;
+  side2Count = 0;
+
+  boxCounts = {};
+
+  updateProgress();
+}
 
 // ============================================================
 // FILL CLIENT LIST
@@ -170,7 +215,7 @@ document.getElementById('loadOrders').addEventListener('click', async () => {
 
 function fillClientList() {
   const select = document.getElementById('clientSelect');
-  select.innerHTML = `<option value="">— виберіть клієнта —</option>`;
+  select.innerHTML = `<option value="">— select a client —</option>`;
 
   const unique = new Set();
 
@@ -203,15 +248,23 @@ document.getElementById('clientSelect').addEventListener('change', () => {
   expectedQty = filtered.reduce((s, e) => s + parseQty(e.qty), 0);
   expectedPal = filtered.reduce((s, e) => s + parseQty(e.pal), 0);
 
-  loadSession();
-  updateProgress();
-  updateStatusUI();
+  const first = filtered[0];
+  if (first) {
+    initOrderCounters({
+      qty: expectedQty,
+      pal: expectedPal,
+      product: first.product,
+    });
+  }
 
-  document.getElementById('scanInput').focus();
+  loadSession();
+  updateStatusUI();
+  updateLog();
+  updateProgress();
 });
 
 // ============================================================
-// PALLET CALCULATION
+// PALLET CALCULATION (UI PREVIEW ONLY)
 // ============================================================
 
 document.getElementById('rowsCount').addEventListener('input', updatePalletCalc);
@@ -220,222 +273,10 @@ document.getElementById('palletHeight').addEventListener('input', updatePalletCa
 function updatePalletCalc() {
   const rows = Number(document.getElementById('rowsCount').value) || 0;
   const height = Number(document.getElementById('palletHeight').value) || 0;
-  const total = rows * height;
 
-  document.getElementById('palletCheck').textContent =
-    `Розрахунок: ${rows} рядів × ${height} ящиків = ${total} ящиків`;
+  document.getElementById('palletCheck').innerHTML =
+    `<b>Rows:</b> ${rows}<br><b>Boxes per pallet (from plan):</b> ${boxesPerPallet || '?'}<br><b>Total pallets (from plan):</b> ${totalPallets || '?'}`;
 }
-
-// ============================================================
-// SCAN MODE UI
-// ============================================================
-
-document.getElementById('scanMode').addEventListener('change', applyScanModeUI);
-
-function applyScanModeUI() {
-  const mode = document.getElementById('scanMode').value;
-  const qtyInput = document.getElementById('qtyInput');
-  const plusBtn = document.getElementById('manualPlusBtn');
-
-  if (mode === 'auto') {
-    qtyInput.disabled = true;
-    plusBtn.style.display = 'none';
-  } else {
-    qtyInput.disabled = false;
-    plusBtn.style.display = 'inline-flex';
-  }
-}
-
-// ============================================================
-// SCAN INPUT
-// ============================================================
-
-document.getElementById('scanInput').addEventListener('keydown', (e) => {
-  if (e.key === 'Enter') {
-    if (status === 'COMPLETED') {
-      alert('Замовлення завершене. Редагування недоступне.');
-      return;
-    }
-
-    const code = e.target.value.trim();
-    if (!code) return;
-
-    const mode = document.getElementById('scanMode').value;
-
-    if (mode === 'auto') {
-      addScan(code, 1);
-    } else {
-      const qty = Number(document.getElementById('qtyInput').value) || 1;
-      addScan(code, qty);
-    }
-
-    status = 'IN_PROGRESS';
-    saveSession();
-    updateStatusUI();
-
-    e.target.value = '';
-  }
-});
-
-// ============================================================
-// MANUAL "+" BUTTON
-// ============================================================
-
-const manualPlusBtn = document.getElementById('manualPlusBtn');
-
-manualPlusBtn.addEventListener('click', () => {
-  if (status === 'COMPLETED') {
-    alert('Замовлення завершене. Редагування недоступне.');
-    return;
-  }
-
-  const now = Date.now();
-  const mode = document.getElementById('scanMode').value;
-  if (mode !== 'manual') return;
-
-  if (now - lastPlusTap < 400) {
-    openManualKeyboard();
-  } else {
-    incrementManual(1);
-  }
-
-  lastPlusTap = now;
-});
-
-manualPlusBtn.addEventListener('mousedown', () => {
-  const mode = document.getElementById('scanMode').value;
-  if (mode !== 'manual') return;
-
-  plusHoldTimeout = setTimeout(() => {
-    openManualKeyboard();
-  }, 500);
-});
-
-manualPlusBtn.addEventListener('mouseup', () => clearTimeout(plusHoldTimeout));
-manualPlusBtn.addEventListener('mouseleave', () => clearTimeout(plusHoldTimeout));
-
-function incrementManual(n) {
-  const code = document.getElementById('scanInput').value.trim();
-  if (!code) return;
-
-  addScan(code, n);
-  status = 'IN_PROGRESS';
-  saveSession();
-  updateStatusUI();
-}
-
-// ============================================================
-// ADD SCAN
-// ============================================================
-
-function addScan(containerId, qty) {
-  if (!scanned[containerId]) scanned[containerId] = 0;
-  scanned[containerId] += qty;
-
-  if (scanned[containerId] <= 0) delete scanned[containerId];
-
-  saveSession();
-  updateLog();
-  updateProgress();
-}
-
-// ============================================================
-// CAMERA + OCR
-// ============================================================
-
-const cameraBtn = document.getElementById('cameraScanBtn');
-const cameraInput = document.getElementById('cameraInput');
-const previewImg = document.getElementById('preview');
-
-cameraBtn.addEventListener('click', () => cameraInput.click());
-
-cameraInput.addEventListener('change', async (e) => {
-  if (status === 'COMPLETED') {
-    alert('Замовлення завершене. Редагування недоступне.');
-    return;
-  }
-
-  const file = e.target.files[0];
-  if (!file) return;
-
-  const url = URL.createObjectURL(file);
-  previewImg.src = url;
-  previewImg.style.display = 'block';
-
-  log('📷 Обробка фото...');
-
-  try {
-    const result = await Tesseract.recognize(url, 'eng', {logger: () => {}});
-    const text = result.data.text || '';
-    const match = text.match(/[A-Z]{4}\d{7}/i);
-
-    if (match) {
-      const code = match[0].toUpperCase();
-      const mode = document.getElementById('scanMode').value;
-      const qty = mode === 'manual' ? Number(document.getElementById('qtyInput').value) || 1 : 1;
-
-      addScan(code, qty);
-      status = 'IN_PROGRESS';
-      saveSession();
-      updateStatusUI();
-
-      log(`✅ Знайдено контейнер: ${code}`);
-    } else {
-      log('❌ Не вдалося розпізнати номер контейнера');
-    }
-  } catch (err) {
-    console.error(err);
-    log('❌ Помилка OCR');
-  }
-});
-
-// ============================================================
-// UNDO
-// ============================================================
-
-document.getElementById('undoBtn').addEventListener('click', () => {
-  if (status === 'COMPLETED') {
-    alert('Замовлення завершене. Редагування недоступне.');
-    return;
-  }
-
-  const keys = Object.keys(scanned);
-  if (keys.length === 0) return;
-
-  const last = keys[keys.length - 1];
-  scanned[last]--;
-
-  if (scanned[last] <= 0) delete scanned[last];
-
-  status = 'IN_PROGRESS';
-  saveSession();
-  updateLog();
-  updateProgress();
-  updateStatusUI();
-});
-
-// ============================================================
-// FINISH CLIENT (MOVE TO IN_PROGRESS)
-// ============================================================
-
-document.getElementById('finishBtn').addEventListener('click', async () => {
-  if (!selectedClient) {
-    alert('Виберіть клієнта');
-    return;
-  }
-
-  if (status === 'COMPLETED') {
-    alert('Замовлення вже завершене.');
-    return;
-  }
-
-  status = 'IN_PROGRESS';
-  stopVideoScanner();
-  saveSession();
-  updateStatusUI();
-
-  alert('Замовлення позначене як опрацьоване. Перевірте та підтвердіть.');
-});
 
 // ============================================================
 // STATUS UI
@@ -449,17 +290,17 @@ function updateStatusUI() {
 
   if (status === 'NEW') {
     el.classList.add('order-status--new');
-    el.textContent = '🟢 Неопрацьоване замовлення';
+    el.textContent = '🟢 Unprocessed order';
   }
 
   if (status === 'IN_PROGRESS') {
     el.classList.add('order-status--progress');
-    el.textContent = '🟡 Опрацьоване — потребує підтвердження';
+    el.textContent = '🟡 Processed - needs confirmation';
   }
 
   if (status === 'COMPLETED') {
     el.classList.add('order-status--completed');
-    el.textContent = '🔵 Завершене замовлення';
+    el.textContent = '🔵 Completed order';
   }
 
   if (status === 'CANCELED') {
@@ -469,28 +310,92 @@ function updateStatusUI() {
 }
 
 // ============================================================
-// COMPLETE ORDER (MOVE TO COMPLETED)
+// LIVE COUNTERS (NEW MODEL)
+// ============================================================
+
+side1Input.addEventListener('input', () => {
+  side1Count = Number(side1Input.value) || 0;
+  updateLiveCounters();
+});
+
+side2Input.addEventListener('input', () => {
+  side2Count = Number(side2Input.value) || 0;
+  updateLiveCounters();
+});
+
+function updateLiveCounters() {
+  const totalScanned = Object.values(boxCounts).reduce((sum, n) => sum + n, 0);
+  const uniqueCodes = Object.keys(boxCounts).length;
+  const palletsCount = boxesPerPallet > 0 ? Math.ceil(totalScanned / boxesPerPallet) : 0;
+
+  // --- SIDE PROGRESS CALCULATION ---
+  let side1Filled = 0;
+  let side2Filled = 0;
+
+  if (totalScanned <= side1Count) {
+    side1Filled = totalScanned;
+    side2Filled = 0;
+  } else {
+    side1Filled = side1Count;
+    side2Filled = totalScanned - side1Count;
+  }
+
+  side2Filled = Math.min(side2Filled, side2Count);
+
+  const side1Percent = side1Count > 0 ? (side1Filled / side1Count) * 100 : 0;
+  const side2Percent = side2Count > 0 ? (side2Filled / side2Count) * 100 : 0;
+
+  document.getElementById('side1Bar').style.width = side1Percent + '%';
+  document.getElementById('side2Bar').style.width = side2Percent + '%';
+
+  document.getElementById('side1Info').textContent = `${side1Filled} / ${side1Count} boxes`;
+
+  document.getElementById('side2Info').textContent = `${side2Filled} / ${side2Count} boxes`;
+
+  // --- EXISTING UI UPDATE ---
+  const percent = totalBoxes > 0 ? Math.min(100, (totalScanned / totalBoxes) * 100) : 0;
+
+  document.getElementById('containerInfo').innerHTML = `
+    <b>Codes scanned:</b> ${uniqueCodes}<br>
+    <b>Boxes:</b> ${totalScanned} / ${totalBoxes}<br>
+    <b>Pallets:</b> ${palletsCount} / ${totalPallets || '—'}<br>
+    <b>Side1 / Side2:</b> ${side1Count} / ${side2Count}
+  `;
+
+  document.getElementById('overlayContainerInfo').innerHTML = `
+    Codes: ${uniqueCodes}<br>
+    Boxes: ${totalScanned} / ${totalBoxes}<br>
+    Pallets: ${palletsCount} / ${totalPallets || '—'}<br>
+    S1/S2: ${side1Count}/${side2Count}
+  `;
+
+  const bar = document.getElementById('progressBar');
+  const overlayBar = document.getElementById('overlayProgressBar');
+
+  bar.style.transition = 'width 0.3s ease-out';
+  overlayBar.style.transition = 'width 0.3s ease-out';
+
+  bar.style.width = percent + '%';
+  overlayBar.style.width = percent + '%';
+}
+
+// ============================================================
+// COMPLETE / CANCEL ORDER
 // ============================================================
 
 window.completeOrder = function () {
   if (status !== 'IN_PROGRESS') {
-    alert('Спочатку опрацюйте замовлення.');
+    alert('First process the order.');
     return;
   }
 
   status = 'COMPLETED';
   saveSession();
   updateStatusUI();
-
-  sendToStock();
 };
 
-// ============================================================
-// CANCEL ORDER
-// ============================================================
-
 window.cancelOrder = function () {
-  if (!confirm('Скасувати замовлення?')) return;
+  if (!confirm('Cancel order?')) return;
 
   status = 'CANCELED';
   saveSession();
@@ -498,15 +403,7 @@ window.cancelOrder = function () {
 };
 
 // ============================================================
-// SEND TO STOCK (placeholder)
-// ============================================================
-
-function sendToStock() {
-  console.log('📦 Передача в сток (поки заглушка)');
-}
-
-// ============================================================
-// LOCAL STORAGE
+// LOCAL STORAGE (NEW MODEL)
 // ============================================================
 
 function saveSession() {
@@ -515,10 +412,13 @@ function saveSession() {
     localStorage.setItem(
       key,
       JSON.stringify({
-        scanned,
-        expectedQty,
-        expectedPal,
+        boxCounts,
         status,
+        totalBoxes,
+        boxesPerPallet,
+        totalPallets,
+        side1Count,
+        side2Count,
       }),
     );
   } catch (e) {
@@ -531,52 +431,47 @@ function loadSession() {
     const key = sessionKey();
     const raw = localStorage.getItem(key);
     if (!raw) {
-      scanned = {};
+      boxCounts = {};
       status = 'NEW';
-      updateLog();
       return;
     }
+
     const data = JSON.parse(raw);
-    scanned = data.scanned || {};
+
+    boxCounts = data.boxCounts || {};
     status = data.status || 'NEW';
+    totalBoxes = data.totalBoxes || totalBoxes;
+    boxesPerPallet = data.boxesPerPallet || boxesPerPallet;
+    totalPallets = data.totalPallets || totalPallets;
+    side1Count = data.side1Count || 0;
+    side2Count = data.side2Count || 0;
+
+    side1Input.value = side1Count || '';
+    side2Input.value = side2Count || '';
+
     updateLog();
+    updateStatusUI();
+    updateLiveCounters();
   } catch (e) {
     console.warn('localStorage load error', e);
   }
 }
 
 // ============================================================
-// UI HELPERS
+// LOG (NEW MODEL)
 // ============================================================
 
 function updateLog() {
   const logBox = document.getElementById('log');
   logBox.innerHTML = '';
 
-  Object.entries(scanned).forEach(([container, count]) => {
+  Object.entries(boxCounts).forEach(([code, count]) => {
     const div = document.createElement('div');
     div.className = 'scanner__log-item';
 
-    const disabled = status === 'COMPLETED' ? 'disabled' : '';
-
-    div.innerHTML = `
-      <span>${container}: ${count} шт.</span>
-      <span>
-        <button ${disabled} onclick="window.editScan('${container}')">✏️</button>
-        <button ${disabled} onclick="window.deleteScan('${container}')">❌</button>
-      </span>
-    `;
-
+    div.innerHTML = `<span>${code}: ${count} pcs.</span>`;
     logBox.appendChild(div);
   });
-}
-
-function updateProgress() {
-  const totalScanned = Object.values(scanned).reduce((s, v) => s + v, 0);
-
-  document.getElementById('rowCheck').textContent =
-    `Очікується: ${expectedQty} ящиків, ${expectedPal} палет — ` +
-    `Відскановано: ${totalScanned} ящиків`;
 }
 
 function log(msg) {
@@ -588,56 +483,90 @@ function log(msg) {
 }
 
 // ============================================================
-// EDIT / DELETE
+// SCAN LOGIC (NEW MODEL)
 // ============================================================
 
-window.editScan = function (containerId) {
-  if (status === 'COMPLETED') {
-    alert('Замовлення завершене. Редагування недоступне.');
-    return;
+// звук завершення палети / етапу
+function playContainerBeep() {
+  const ctx = new (window.AudioContext || window.webkitAudioContext)();
+  const osc = ctx.createOscillator();
+  const gain = ctx.createGain();
+
+  osc.type = 'square';
+  osc.frequency.value = 440;
+  gain.gain.value = 0.25;
+
+  osc.connect(gain);
+  gain.connect(ctx.destination);
+
+  osc.start();
+  osc.stop(ctx.currentTime + 0.25);
+}
+
+// 🔥 ГОЛОВНА ФУНКЦІЯ — кожен скан = +qty
+function registerBoxScan(code, qty = 1) {
+  if (!code) return;
+
+  if (!boxCounts[code]) {
+    boxCounts[code] = 0;
   }
 
-  const current = scanned[containerId] || 0;
-  const newQtyStr = prompt('Нова кількість:', current);
-  if (newQtyStr === null) return;
-
-  const newQty = Number(newQtyStr) || 0;
-  if (newQty <= 0) delete scanned[containerId];
-  else scanned[containerId] = newQty;
+  boxCounts[code] += qty;
 
   status = 'IN_PROGRESS';
   saveSession();
+
   updateLog();
   updateProgress();
-  updateStatusUI();
-};
 
-window.deleteScan = function (containerId) {
-  if (status === 'COMPLETED') {
-    alert('Замовлення завершене. Редагування недоступне.');
-    return;
+  const totalScanned = Object.values(boxCounts).reduce((s, n) => s + n, 0);
+  if (boxesPerPallet > 0 && totalScanned % boxesPerPallet === 0) {
+    playContainerBeep();
   }
-
-  if (!confirm(`Видалити контейнер ${containerId}?`)) return;
-
-  delete scanned[containerId];
-
-  status = 'IN_PROGRESS';
-  saveSession();
-  updateLog();
-  updateProgress();
-  updateStatusUI();
-};
+}
 
 // ============================================================
-// MODAL KEYPAD
+// MANUAL POPUP (ENABLED)
 // ============================================================
 
-window.openManualKeyboard = function () {
-  const modal = document.getElementById('manualKeyboard');
-  const input = document.getElementById('manualQty');
-  input.value = '';
-  modal.classList.add('active');
+const manualPopup = document.getElementById('manualConfirm');
+const popupCode = document.getElementById('popupCode');
+const popupQty = document.getElementById('popupQty');
+
+let lastScannedCode = '';
+let lastQty = 1;
+
+function showManualPopup(code, qty = 1) {
+  lastScannedCode = code;
+  lastQty = qty;
+
+  popupCode.textContent = code;
+  popupQty.textContent = qty;
+
+  manualPopup.classList.add('active');
+}
+
+function closeManualPopup() {
+  manualPopup.classList.remove('active');
+}
+
+document.getElementById('popupOk').addEventListener('click', () => {
+  registerBoxScan(lastScannedCode, lastQty);
+  closeManualPopup();
+});
+
+document.getElementById('popupEdit').addEventListener('click', () => {
+  closeManualPopup();
+  openManualKeyboard(lastQty);
+});
+
+// ============================================================
+// MANUAL KEYPAD (ENABLED)
+// ============================================================
+
+window.openManualKeyboard = function (startValue = 1) {
+  document.getElementById('manualQty').value = startValue;
+  document.getElementById('manualKeyboard').classList.add('active');
 };
 
 window.closeManualKeyboard = function () {
@@ -660,13 +589,128 @@ window.clearQty = function () {
 
 window.confirmManualQty = function () {
   const qty = Number(document.getElementById('manualQty').value);
-  if (qty > 0) incrementManual(qty);
+  if (qty > 0) registerBoxScan(lastScannedCode, qty);
   window.closeManualKeyboard();
 };
 
 // ============================================================
+// PROGRESS (NEW MODEL)
+// ============================================================
+
+function getTotalScanned() {
+  return Object.values(boxCounts).reduce((sum, n) => sum + n, 0);
+}
+
+function updateProgress() {
+  const scannedBoxes = getTotalScanned();
+  const remaining = Math.max(0, totalBoxes - scannedBoxes);
+  const currentPallet = boxesPerPallet ? Math.ceil(scannedBoxes / boxesPerPallet) : 0;
+
+  document.getElementById('palletCheck').innerHTML = `
+    <b>Total scanned:</b> ${scannedBoxes}<br>
+    <b>Remaining:</b> ${remaining}<br>
+    <b>Pallet:</b> ${currentPallet} / ${totalPallets || '?'}
+  `;
+
+  updateProgressBar();
+  checkPalletCompletion(scannedBoxes);
+  checkOrderCompletion(scannedBoxes);
+}
+
+function updateProgressBar() {
+  const scannedBoxes = getTotalScanned();
+  const percent = totalBoxes > 0 ? Math.min(100, (scannedBoxes / totalBoxes) * 100) : 0;
+  document.getElementById('progressBar').style.width = percent + '%';
+}
+
+function checkPalletCompletion(scannedBoxes) {
+  if (!boxesPerPallet || scannedBoxes === 0 || scannedBoxes >= totalBoxes) return;
+
+  if (scannedBoxes % boxesPerPallet === 0) {
+    flashPalletComplete();
+  }
+}
+
+function flashPalletComplete() {
+  const el = document.getElementById('palletCheck');
+  el.classList.add('pallet-complete');
+  setTimeout(() => el.classList.remove('pallet-complete'), 1200);
+}
+
+function checkOrderCompletion(scannedBoxes) {
+  if (scannedBoxes >= totalBoxes && totalBoxes > 0) {
+    flashOrderComplete();
+    showStep(5);
+    fillSummary();
+    generateContainerReport();
+    saveScanResult();
+  }
+}
+
+function flashOrderComplete() {
+  const el = document.getElementById('palletCheck');
+  el.classList.add('order-complete');
+  setTimeout(() => el.classList.remove('order-complete'), 2000);
+}
+
+// ============================================================
+// SUMMARY (NEW MODEL)
+// ============================================================
+
+function fillSummary() {
+  const summaryEl = document.getElementById('summary');
+  if (!summaryEl) return;
+
+  const scannedBoxes = getTotalScanned();
+
+  summaryEl.innerHTML = `
+    <b>Total boxes ordered:</b> ${totalBoxes}<br>
+    <b>Total boxes scanned:</b> ${scannedBoxes}<br>
+    <b>Total pallets:</b> ${totalPallets}<br>
+    <b>Unique codes scanned:</b> ${Object.keys(boxCounts).length}<br><br>
+
+    <b>Details by code:</b><br>
+    ${Object.entries(boxCounts)
+      .map(([code, count]) => `${code}: ${count} boxes`)
+      .join('<br>')}
+  `;
+}
+
+async function saveScanResult() {
+  const date = document.getElementById('scanDate').value;
+
+  await fetch('/api/save-scan-result', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({
+      client: selectedClient,
+      date,
+      boxCounts,
+      totalBoxes,
+      boxesPerPallet,
+      totalPallets,
+    }),
+  });
+}
+
+// ============================================================
+// SCAN HANDLER (NEW MODEL)
+// ============================================================
+
+function onScanDetected(code) {
+  console.log('[SCAN] detected raw:', code);
+
+  const mode = document.getElementById('scanMode').value;
+
+  if (mode === 'auto') {
+    registerBoxScan(code, 1);
+  } else {
+    showManualPopup(code, 1);
+  }
+}
+
+// ============================================================
 // FULLSCREEN VIDEO SCANNER — Overlay Mode
-// Autofocus, AI Noise Filter, Torch, Flash Border, WebAudio Beep
 // ============================================================
 
 let videoStream = null;
@@ -680,15 +724,12 @@ const MIN_CODE_LENGTH = 4;
 
 let autofocusInterval = null;
 
-// ----------------------
-// WebAudio beep
-// ----------------------
-function playBeep() {
+function playScanBeep() {
   const ctx = new (window.AudioContext || window.webkitAudioContext)();
   const osc = ctx.createOscillator();
   const gain = ctx.createGain();
 
-  osc.type = "sine";
+  osc.type = 'sine';
   osc.frequency.value = 880;
   gain.gain.value = 0.15;
 
@@ -699,109 +740,69 @@ function playBeep() {
   osc.stop(ctx.currentTime + 0.12);
 }
 
-// ----------------------
-// STOP SCANNER
-// ----------------------
-function stopVideoScanner() {
-  if (videoStream) {
-    videoStream.getTracks().forEach((t) => t.stop());
-    videoStream = null;
-  }
-
-  clearInterval(autofocusInterval);
-
-  document.getElementById("scannerOverlay").style.display = "none";
-  document.body.classList.remove("scan-flash");
-
-  log("⏹ Відео‑сканер вимкнено");
-}
-
-document.getElementById("closeScanner").onclick = stopVideoScanner;
-
-// ----------------------
-// START SCANNER
-// ----------------------
-document.getElementById("startVideoScanner").addEventListener("click", async () => {
-  if (!selectedClient) {
-    alert("Спочатку виберіть клієнта");
-    return;
-  }
-
-  const overlay = document.getElementById("scannerOverlay");
-  const video = document.getElementById("video");
-  const flashBtn = document.getElementById("flashToggle");
-
-  overlay.style.display = "block";
+async function startVideoScanner() {
+  const video = document.getElementById('video');
+  const flashBtn = document.getElementById('flashToggle');
 
   try {
-    codeReader = new ZXing.BrowserMultiFormatReader();
-
-    // Try rear camera first
+    let stream;
     try {
-      videoStream = await navigator.mediaDevices.getUserMedia({
+      stream = await navigator.mediaDevices.getUserMedia({
         video: {
-          facingMode: "environment",
-          width: { ideal: 1920 },
-          height: { ideal: 1080 },
-          advanced: [{ torch: false }],
+          facingMode: 'environment',
+          width: {ideal: 1920},
+          height: {ideal: 1080},
         },
       });
-    } catch {
-      videoStream = await navigator.mediaDevices.getUserMedia({ video: true });
+    } catch (e) {
+      stream = await navigator.mediaDevices.getUserMedia({video: true});
     }
 
-    video.srcObject = videoStream;
+    video.srcObject = stream;
+    videoStream = stream;
 
-    // ----------------------
-    // Autofocus every 2 sec
-    // ----------------------
+    await new Promise((resolve) => {
+      video.onloadedmetadata = () => {
+        if (video.videoWidth > 0) resolve();
+      };
+    });
+
+    await new Promise((r) => setTimeout(r, 250));
+
     autofocusInterval = setInterval(() => {
-      if (!videoStream) return;
-
-      const tracks = videoStream.getVideoTracks();
-      if (!tracks.length) return;
-
-      const track = tracks[0];
-      const caps = track.getCapabilities();
-
-      if (caps.focusMode) {
-        track.applyConstraints({ advanced: [{ focusMode: "continuous" }] });
+      const track = videoStream?.getVideoTracks()[0];
+      const caps = track?.getCapabilities?.();
+      if (caps?.focusMode) {
+        track.applyConstraints({advanced: [{focusMode: 'continuous'}]});
       }
     }, 2000);
 
-    // ----------------------
-    // Torch toggle
-    // ----------------------
     flashBtn.onclick = async () => {
-      if (!videoStream) return;
-
-      const tracks = videoStream.getVideoTracks();
-      if (!tracks.length) return;
-
-      const track = tracks[0];
-      const caps = track.getCapabilities();
-
-      if (!caps.torch) {
-        alert("Ліхтарик не підтримується");
+      const track = videoStream?.getVideoTracks()[0];
+      const caps = track?.getCapabilities?.();
+      if (!caps?.torch) {
+        alert('Flashlight is not supported');
         return;
       }
 
       torchEnabled = !torchEnabled;
-      await track.applyConstraints({ advanced: [{ torch: torchEnabled }] });
-      flashBtn.style.background = torchEnabled ? "yellow" : "white";
+      await track.applyConstraints({advanced: [{torch: torchEnabled}]});
+      flashBtn.style.background = torchEnabled ? 'yellow' : 'white';
     };
 
-    // ----------------------
-    // Decode loop
-    // ----------------------
+    codeReader = new ZXing.BrowserMultiFormatReader();
+
     codeReader.decodeFromVideoDevice(null, video, (result, err) => {
-      if (!result) return;
+      if (err && !(err instanceof ZXing.NotFoundException)) {
+        console.warn('[ZXING] error:', err);
+      }
+      if (!result) {
+        return;
+      }
 
       const now = Date.now();
       const code = result.text.trim();
-      const format = result.getBarcodeFormat?.() || "UNKNOWN";
 
-      // AI noise filter
       if (code.length < MIN_CODE_LENGTH) return;
       if (now - lastScanTime < SCAN_COOLDOWN) return;
       if (code === lastScanned) return;
@@ -809,27 +810,192 @@ document.getElementById("startVideoScanner").addEventListener("click", async () 
       lastScanned = code;
       lastScanTime = now;
 
-      // Green flash
-      document.body.classList.add("scan-flash");
-      setTimeout(() => document.body.classList.remove("scan-flash"), 150);
+      document.body.classList.add('scan-flash');
+      setTimeout(() => document.body.classList.remove('scan-flash'), 150);
 
-      // Vibration + beep
       navigator.vibrate?.(100);
-      playBeep();
+      playScanBeep();
 
-      console.log("Detected format:", format);
-
-      // Business logic
-      addScan(code, 1);
-      saveSession();
-      updateStatusUI();
-      updateProgress();
-      updateLog();
+      onScanDetected(code);
     });
 
-    log("🎥 FULLSCREEN відео‑сканер увімкнено");
+    log('🎥 FULLSCREEN video scanner is on');
   } catch (err) {
-    console.error(err);
-    log("❌ Не вдалося увімкнути відео‑сканер");
+    log('❌ Failed to turn on the video scanner');
+    stopVideoScanner();
   }
+}
+
+function stopVideoScanner() {
+  if (codeReader) {
+    codeReader.reset();
+    codeReader = null;
+  }
+
+  if (videoStream) {
+    videoStream.getTracks().forEach((t) => t.stop());
+    videoStream = null;
+  }
+
+  clearInterval(autofocusInterval);
+
+  const overlay = document.getElementById('scannerOverlay');
+  if (overlay) overlay.classList.remove('active');
+
+  document.body.classList.remove('scan-flash');
+
+  log('⏹ The video scanner is disabled');
+}
+
+document.getElementById('closeScanner').onclick = stopVideoScanner;
+
+document.getElementById('startVideoScanner').addEventListener('click', () => {
+  if (!selectedClient) {
+    alert('First, select a customer');
+    return;
+  }
+
+  const overlay = document.getElementById('scannerOverlay');
+  if (overlay) overlay.classList.add('active');
+
+  startVideoScanner();
+});
+
+// ============================================================
+// GLOBAL MENU LOGIC
+// ============================================================
+
+const globalMenu = document.getElementById('globalMenu');
+const globalMenuBtn = document.getElementById('globalMenuBtn');
+const closeGlobalMenu = document.getElementById('closeGlobalMenu');
+const cancelTaskBtn = document.getElementById('cancelTaskBtn');
+
+globalMenuBtn.addEventListener('click', () => {
+  globalMenu.classList.add('active');
+});
+
+closeGlobalMenu.addEventListener('click', () => {
+  globalMenu.classList.remove('active');
+});
+
+cancelTaskBtn.addEventListener('click', () => {
+  if (confirm('Cancel current task? All progress will be lost.')) {
+    localStorage.clear();
+    location.href = '/index.html';
+  }
+});
+
+// ============================================================
+// FINAL REPORT (NEW MODEL — SORTED + COPY BUTTON)
+// ============================================================
+
+function generateContainerReport() {
+  const reportEl = document.getElementById('finalReport');
+  if (!reportEl) return;
+
+  // 🔥 Формуємо масив кодів
+  const list = Object.entries(boxCounts)
+    .map(([code, count]) => ({code, count}))
+    .sort((a, b) => b.count - a.count); // DESC
+
+  // 🔥 Підрахунок "без стікера"
+  // Логіка: якщо totalBoxes > sum(boxCounts) → є нестикеровані
+  const scannedTotal = list.reduce((s, e) => s + e.count, 0);
+  const withoutSticker = Math.max(0, totalBoxes - scannedTotal);
+
+  // 🔥 Формуємо текст звіту
+  let textReport = `${selectedClient}\n\n`;
+
+  list.forEach((item) => {
+    textReport += `${item.code} ${item.count}B\n`;
+  });
+
+  if (withoutSticker > 0) {
+    textReport += `\n${withoutSticker} without sticker`;
+  }
+
+  // 🔥 HTML-вивід
+  reportEl.innerHTML = `
+    <div class="report-header"><b>${selectedClient}</b></div>
+
+    <pre class="report-text">${textReport}</pre>
+
+    <button class="button button--primary button--full" id="copyReportBtn">
+      Copy report
+    </button>
+  `;
+
+  // 🔥 Кнопка копіювання
+  document.getElementById('copyReportBtn').onclick = () => {
+    navigator.clipboard
+      .writeText(textReport)
+      .then(() => alert('Report copied to clipboard'))
+      .catch(() => alert('Copy failed'));
+  };
+}
+
+// ============================================================
+// WIZARD
+// ============================================================
+
+let currentStep = 0;
+
+function showStep(n) {
+  stopVideoScanner();
+
+  document.querySelectorAll('.wizard__step').forEach((step) => {
+    step.classList.remove('active');
+  });
+
+  const target = document.getElementById(`step${n}`);
+  if (target) target.classList.add('active');
+
+  currentStep = n;
+}
+
+document.querySelectorAll('.wizard__next').forEach((btn) => {
+  btn.addEventListener('click', () => {
+    showStep(currentStep + 1);
+  });
+});
+
+showStep(0);
+
+// ============================================================
+// REPORT BUTTONS (EXCEL COUNTER)
+// ============================================================
+
+document.getElementById('generateReportBtn')?.addEventListener('click', async () => {
+  const date = document.getElementById('scanDate').value;
+  const statusEl = document.getElementById('reportStatus');
+
+  statusEl.textContent = 'Generating report...';
+
+  try {
+    const res = await fetch('/api/generate-counter', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({date}),
+    });
+
+    const data = await res.json();
+
+    if (data.ok) {
+      statusEl.textContent = '✔ Report generated successfully';
+    } else {
+      statusEl.textContent = '❌ Error generating report';
+    }
+  } catch (err) {
+    statusEl.textContent = '❌ Server error';
+  }
+});
+
+document.getElementById('downloadReportBtn')?.addEventListener('click', () => {
+  const date = document.getElementById('scanDate').value;
+  window.location.href = `/api/download-counter?date=${encodeURIComponent(date)}`;
+});
+
+document.getElementById('openFolderBtn')?.addEventListener('click', () => {
+  const date = document.getElementById('scanDate').value;
+  window.open(`/api/open-folder?date=${encodeURIComponent(date)}`, '_blank');
 });

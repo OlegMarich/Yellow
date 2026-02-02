@@ -37,6 +37,8 @@ body {
   color: var(--text);
   font-size: 16px;
   line-height: 1.4;
+  position: relative;
+  overflow-x: hidden;
 }
 
 /* ============================================================
@@ -158,6 +160,24 @@ body {
 }
 
 /* ============================================================
+   HERO (index)
+   ============================================================ */
+
+.section__actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 12px;
+  margin-top: 20px;
+}
+@media (max-width: 540px) {
+  .section__actions {
+    /* flex-direction: row; */
+    flex-direction: column;
+  }
+}
+
+/* ============================================================
    DROPZONE
    ============================================================ */
 
@@ -176,110 +196,46 @@ body {
 }
 
 /* ============================================================
-   MODALS
+   WIZARD
    ============================================================ */
 
-.modal {
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.5);
-  display: none;
-  justify-content: center;
-  align-items: center;
-  z-index: 200;
-}
-
-.modal.active {
-  display: flex;
-}
-
-.modal__content {
-  background: var(--white);
-  padding: 32px;
-  border-radius: 12px;
-  width: 90%;
-  max-width: 420px;
-  text-align: center;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
-}
-
-.modal__title {
-  font-size: 1.4rem;
-  font-weight: 700;
-  margin-bottom: 16px;
-}
-
-.modal__actions {
-  display: flex;
-  justify-content: center;
-  gap: 12px;
-  margin-top: 20px;
-}
-
-/* ============================================================
-   HERO (index)
-   ============================================================ */
-
-.section__actions {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: 12px;
-  margin-top: 20px;
-}
-@media (max-width: 540px) {
-  .section__actions {
-    /* flex-direction: row; */
-    flex-direction: column;
-  }
-}
-/* ============================================================
-   SCANNER
-   ============================================================ */
-
-.scanner {
-  margin-top: 20px;
-}
-
-.scanner__preview {
-  width: 100%;
-  border-radius: 12px;
-  margin-top: 12px;
-}
-
-.scanner__log {
-  background: var(--gray);
-  border-radius: 8px;
-  padding: 12px;
-  height: 180px;
-  overflow-y: auto;
-  margin-top: 20px;
-  font-size: 0.9rem;
-}
-
-.flash-success {
-  background: #c8ffc8 !important;
-  transition: background 0.4s ease;
-}
-
-/* QR block (desktop only) */
-.scanner-qr {
-  background: var(--white);
+.wizard {
   padding: 20px;
-  border-radius: 12px;
-  margin-bottom: 24px;
-  text-align: center;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
 }
 
-.scanner-qr__title {
-  font-size: 1.25rem;
-  font-weight: 600;
+.wizard__step {
+  display: none;
 }
 
-.scanner-qr__description {
-  color: var(--text-light);
-  margin-bottom: 12px;
+.wizard__step.active {
+  display: block;
+}
+
+.wizard__title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin-bottom: 20px;
+}
+
+.wizard__info {
+  background: var(--gray);
+  padding: 12px 16px;
+  border-radius: 8px;
+  margin: 16px 0;
+  font-size: 0.95rem;
+  line-height: 1.4;
+}
+
+.wizard__log {
+  background: #111;
+  color: #0f0;
+  padding: 12px;
+  border-radius: 8px;
+  height: 160px;
+  overflow-y: auto;
+  font-family: monospace;
+  font-size: 0.9rem;
+  margin-top: 16px;
 }
 
 /* ============================================================
@@ -346,258 +302,539 @@ body {
 }
 
 /* ============================================================
-   MOBILE ADAPTATION
+   QR CONNECTION PANEL
    ============================================================ */
 
-@media (max-width: 768px) {
-  .page__section {
-    padding: 20px 12px;
-  }
+.scanner-qr {
+  background: var(--white);
+  padding: 20px;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  margin-bottom: 24px;
+}
 
-  .button {
-    font-size: 1.1rem;
-    padding: 14px;
-  }
+.scanner-qr__title {
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin-bottom: 8px;
+}
 
-  .input,
-  .select {
-    font-size: 1.1rem;
-    padding: 14px;
-  }
+.scanner-qr__description {
+  color: var(--text-light);
+  margin-bottom: 16px;
+}
 
-  .scanner-qr {
-    display: none;
-  }
+.scanner-qr__box {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+}
 
-  .chambers {
-    flex-direction: column;
-    align-items: center;
-  }
+.scanner-qr__code {
+  width: 200px;
+  height: 200px;
+  background: var(--gray);
+  border-radius: 8px;
+}
 
-  .chambers__left-side,
-  .chambers__right-side {
-    flex-direction: row;
-    flex-wrap: wrap;
-    justify-content: center;
-  }
+.scanner-qr__status {
+  font-size: 0.9rem;
+  color: var(--text-light);
+}
 
-  .page__chamber {
-    width: 6.5rem;
-    height: 7.5rem;
-  }
+.qr-panel__device {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 12px;
+}
 
-  .page__chamber::after {
-    font-size: 1.2rem;
-  }
+.qr-device__dot {
+  width: 12px;
+  height: 12px;
+  background: #d00;
+  border-radius: 50%;
+}
+
+.qr-device__text {
+  font-size: 0.9rem;
 }
 
 /* ============================================================
-   MODAL KEYPAD (Add Quantity)
+   POPUP (MANUAL CONFIRM)
    ============================================================ */
 
-.modal-keypad {
+.popup {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.45);
+  background: rgba(0, 0, 0, 0.55);
   display: none;
-  justify-content: center;
   align-items: center;
-  z-index: 300;
+  justify-content: center;
+  z-index: 2000;
 }
 
-.modal-keypad.active {
+.popup.active {
   display: flex;
 }
 
-.modal-keypad__content {
+.popup__content {
   background: var(--white);
-  padding: 28px;
-  border-radius: 16px;
+  padding: 24px;
+  border-radius: 12px;
   width: 90%;
   max-width: 360px;
   text-align: center;
-  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.18);
-  animation: keypadFade 0.25s ease;
 }
 
-@keyframes keypadFade {
-  from {
-    opacity: 0;
-    transform: translateY(10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+.popup__title {
+  font-size: 1rem;
+  margin-bottom: 6px;
 }
 
-.modal-keypad__title {
-  font-size: 1.25rem;
-  font-weight: 600;
-  margin-bottom: 16px;
-  color: var(--text);
-}
-
-.modal-keypad__input {
-  width: 100%;
-  padding: 14px;
+.popup__code {
   font-size: 1.4rem;
-  font-weight: 600;
-  text-align: center;
-  border-radius: 10px;
-  border: 1px solid #d1d5db;
-  margin-bottom: 20px;
-  background: var(--gray);
+  font-weight: 700;
+  margin-bottom: 16px;
 }
 
-.modal-keypad__grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 12px;
-  margin-bottom: 20px;
+.popup__qty {
+  font-size: 1.4rem;
+  font-weight: 700;
+  margin-bottom: 16px;
 }
 
-.modal-keypad__key {
-  padding: 16px 0;
-  font-size: 1.25rem;
-  font-weight: 600;
-  background: var(--white);
-  border-radius: 10px;
-  border: 1px solid #d1d5db;
-  cursor: pointer;
-  transition: 0.2s;
-}
-
-.modal-keypad__key:hover {
-  background: var(--gray);
-}
-
-.modal-keypad__actions {
+.popup__actions {
   display: flex;
-  justify-content: center;
   gap: 12px;
-}
-
-.modal-keypad__btn {
-  flex: 1;
-  padding: 14px;
-  border-radius: 10px;
-  font-size: 1.1rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: 0.25s;
-  border: none;
-}
-
-.modal-keypad__btn.button--primary {
-  background: var(--primary);
-  color: var(--white);
-}
-
-.modal-keypad__btn.button--primary:hover {
-  background: var(--primary-hover);
-}
-
-.modal-keypad__btn.button--secondary {
-  background: transparent;
-  border: 1px solid #d1d5db;
-  color: var(--text);
-}
-
-.modal-keypad__btn.button--secondary:hover {
-  background: var(--gray);
+  justify-content: center;
 }
 
 /* ============================================================
-   SCANNER — Unified Premium Minimalism
+   QTY INPUT
    ============================================================ */
 
-/* Scanner container */
-.scanner {
-  background: var(--white);
-  padding: 24px;
-  border-radius: 16px;
-  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.08);
-  margin-top: 24px;
-}
-
-/* Info blocks */
-.scanner__info {
-  background: var(--gray);
-  padding: 12px 16px;
-  border-radius: 10px;
-  font-size: 0.95rem;
-  margin-bottom: 16px;
-  color: var(--text-light);
-}
-
-/* Order status */
-.order-status {
-  background: var(--gray);
-  padding: 12px;
-  border-radius: 10px;
-  margin-bottom: 16px;
-  font-size: 0.95rem;
-  color: var(--text-light);
-}
-
-/* Video scanner */
-.video-scanner {
-  width: 100%;
-  max-height: 240px;
-  border-radius: 12px;
-  margin-top: 12px;
-  background: #000;
-  display: none;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
-}
-
-/* Preview image */
-.scanner__preview {
-  width: 100%;
-  border-radius: 12px;
-  margin-top: 12px;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
-}
-
-/* Log */
-.scanner__log {
-  background: var(--gray);
-  border-radius: 12px;
-  padding: 16px;
-  height: 200px;
-  overflow-y: auto;
-  margin-top: 24px;
-  font-size: 0.9rem;
-  line-height: 1.4;
-  box-shadow: inset 0 0 8px rgba(0, 0, 0, 0.05);
-}
-
-/* Qty block */
 .qty {
   display: flex;
   align-items: center;
-  gap: 12px;
-  margin-top: 6px;
+  gap: 8px;
 }
 
 .qty__input {
   flex: 1;
-  padding: 12px 16px;
-  border-radius: 10px;
-  border: 1px solid #d1d5db;
-  background: var(--white);
-  font-size: 1.1rem;
 }
 
 .qty__plus {
-  padding: 12px 18px;
-  font-size: 1.4rem;
-  border-radius: 10px;
-  cursor: pointer;
+  padding: 12px 16px;
+  font-size: 1.2rem;
 }
 
-/* Pallet sides */
+/* ============================================================
+   PROGRESS BAR
+   ============================================================ */
+
+.progress {
+  width: 100%;
+  height: 10px;
+  background: #e5e7eb;
+  border-radius: 6px;
+  margin: 16px 0;
+}
+
+.progress__bar {
+  width: 0%;
+  height: 100%;
+  background: var(--primary);
+  border-radius: 6px;
+  transition: width 0.25s ease;
+}
+
+/* ============================================================
+   GLOBAL MENU
+   ============================================================ */
+
+.global-menu-btn {
+  position: fixed;
+  top: 16px;
+  right: 16px;
+  z-index: 3000;
+  background: var(--primary);
+  color: var(--white);
+  padding: 10px 14px;
+  border-radius: 8px;
+  font-size: 1.2rem;
+}
+
+.global-menu {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  display: none;
+  z-index: 4000;
+}
+
+.global-menu.active {
+  display: block;
+}
+
+.global-menu__content {
+  background: var(--white);
+  width: 80%;
+  max-width: 320px;
+  height: 100%;
+  padding: 24px;
+  box-shadow: 4px 0 12px rgba(0, 0, 0, 0.2);
+}
+
+.global-menu__title {
+  font-size: 1.4rem;
+  margin-bottom: 20px;
+}
+
+.global-menu__item {
+  width: 100%;
+  padding: 12px;
+  margin-bottom: 12px;
+  background: var(--gray);
+  border-radius: 8px;
+  text-align: left;
+}
+
+.global-menu__close {
+  margin-top: 20px;
+  width: 100%;
+  padding: 12px;
+  background: var(--primary);
+  color: var(--white);
+  border-radius: 8px;
+}
+
+/* ============================================================
+   FULLSCREEN VIDEO SCANNER OVERLAY — PREMIUM MOBILE-FIRST
+   ============================================================ */
+.side-progress {
+  margin: 20px 0;
+  display: grid;
+  gap: 15px;
+}
+
+.side-progress__item label {
+  font-weight: bold;
+}
+
+.side-progress__info {
+  font-size: 14px;
+  margin-top: 4px;
+  opacity: 0.8;
+}
+
+#scannerOverlay {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background: #000;
+  z-index: 5000;
+
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s ease;
+}
+
+#scannerOverlay.active {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* VIDEO */
+#video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  z-index: 1;
+  background: #000;
+}
+
+/* DARK MASK */
+.overlay-dark {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.35);
+  z-index: 2;
+}
+
+/* FRAME */
+.overlay-frame {
+  position: absolute;
+  width: 70%;
+  max-width: 420px;
+  aspect-ratio: 1 / 1;
+  border-radius: 12px;
+  z-index: 3;
+  pointer-events: none;
+}
+
+.corner {
+  position: absolute;
+  width: 28px;
+  height: 28px;
+  border: 4px solid #00ff99;
+}
+
+.corner.tl {
+  top: 0;
+  left: 0;
+  border-right: none;
+  border-bottom: none;
+}
+.corner.tr {
+  top: 0;
+  right: 0;
+  border-left: none;
+  border-bottom: none;
+}
+.corner.bl {
+  bottom: 0;
+  left: 0;
+  border-right: none;
+  border-top: none;
+}
+.corner.br {
+  bottom: 0;
+  right: 0;
+  border-left: none;
+  border-top: none;
+}
+
+/* LASER */
+.overlay-laser {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 65%;
+  max-width: 380px;
+  height: 3px;
+  background: rgba(255, 0, 0, 0.9);
+  transform: translate(-50%, -50%);
+  z-index: 4;
+  animation: laserMove 1.8s infinite ease-in-out;
+}
+
+@keyframes laserMove {
+  0% {
+    transform: translate(-50%, -180px);
+  }
+  50% {
+    transform: translate(-50%, 180px);
+  }
+  100% {
+    transform: translate(-50%, -180px);
+  }
+}
+
+/* TOP INFO */
+.overlay-top {
+  position: absolute;
+  top: env(safe-area-inset-top, 16px);
+  left: 0;
+  right: 0;
+  display: flex;
+  justify-content: space-between;
+  padding: 0 16px;
+  z-index: 5;
+  color: #fff;
+  font-size: 14px;
+  font-family: sans-serif;
+}
+
+.overlay-info {
+  background: rgba(0, 0, 0, 0.5);
+  padding: 6px 10px;
+  border-radius: 6px;
+}
+
+/* PROGRESS BAR */
+.overlay-progress {
+  position: absolute;
+  bottom: 80px;
+  left: 10%;
+  width: 80%;
+  height: 6px;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 3px;
+  overflow: hidden;
+  z-index: 5;
+}
+
+.overlay-progress__bar {
+  height: 100%;
+  width: 0%;
+  background: #00ff99;
+  transition: width 0.3s ease;
+}
+
+/* QTY */
+.overlay-qty {
+  position: absolute;
+  bottom: 120px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(0, 0, 0, 0.5);
+  color: #fff;
+  font-size: 16px;
+  padding: 6px 12px;
+  border-radius: 8px;
+  z-index: 5;
+  font-family: sans-serif;
+}
+
+/* LOG */
+.overlay-log {
+  position: absolute;
+  bottom: 160px;
+  left: 16px;
+  right: 16px;
+  max-height: 120px;
+  overflow-y: auto;
+  font-size: 12px;
+  color: #ccc;
+  font-family: monospace;
+  z-index: 5;
+}
+
+/* BUTTONS */
+.overlay-buttons {
+  position: absolute;
+  bottom: env(safe-area-inset-bottom, 16px);
+  left: 0;
+  right: 0;
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  z-index: 6;
+}
+
+.overlay-btn {
+  background: rgba(255, 255, 255, 0.9);
+  border: none;
+  border-radius: 50%;
+  width: 48px;
+  height: 48px;
+  font-size: 20px;
+  cursor: pointer;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
+  transition: background 0.2s ease;
+}
+
+.overlay-btn:hover {
+  background: #ff0;
+}
+
+.overlay-btn--stop {
+  background: #f33;
+  color: #fff;
+}
+
+.overlay-btn--close {
+  background: #333;
+  color: #fff;
+}
+/* ============================================================
+   MOBILE ADAPTATION
+   ============================================================ */
+
+@media (max-width: 768px) {
+  .wizard {
+    padding: 16px;
+  }
+
+  .wizard__title {
+    font-size: 1.3rem;
+  }
+
+  .button {
+    padding: 12px 18px;
+    font-size: 1rem;
+  }
+
+  .overlay-frame {
+    width: 80%;
+    max-width: 360px;
+  }
+
+  .overlay-laser {
+    width: 80%;
+    max-width: 360px;
+  }
+
+  .overlay-progress {
+    width: 80%;
+    bottom: 120px;
+  }
+
+  .overlay-log {
+    width: 80%;
+    bottom: 16px;
+  }
+
+  .overlay-qty {
+    bottom: 80px;
+  }
+}
+
+@media (max-width: 480px) {
+  .overlay-frame {
+    width: 85%;
+    max-width: 300px;
+  }
+
+  .overlay-laser {
+    width: 85%;
+    max-width: 300px;
+  }
+
+  .overlay-progress {
+    width: 85%;
+  }
+
+  .overlay-log {
+    width: 85%;
+  }
+}
+
+/* ============================================================
+   SCAN FLASH (+1)
+   ============================================================ */
+
+.scan-flash {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: rgba(0, 255, 0, 0.25);
+  color: #0f0;
+  font-size: 2rem;
+  padding: 20px 30px;
+  border-radius: 12px;
+  opacity: 0;
+  pointer-events: none;
+  z-index: 4500;
+  transition: opacity 0.2s ease;
+}
+
+.scan-flash.active {
+  opacity: 1;
+}
+
+/* ============================================================
+   SIDE INPUTS (Step 4)
+   ============================================================ */
+
 .pallet-sides {
   display: flex;
   gap: 16px;
@@ -605,173 +842,91 @@ body {
 }
 
 .side-input {
-  font-size: 1.1rem;
-}
-
-/* Section actions unified */
-.section__actions {
-  margin-top: 24px;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-/* Buttons unify */
-.button {
-  border-radius: 10px;
-  padding: 14px 20px;
-  font-size: 1.05rem;
-}
-
-/* Inputs unify */
-.input,
-.select {
-  border-radius: 10px;
-  padding: 14px 16px;
-  font-size: 1.05rem;
-}
-
-/* Labels unify */
-.form__label {
-  font-size: 1rem;
-  margin-bottom: 18px;
-}
-
-/* QR block unify */
-.scanner-qr {
-  border-radius: 16px;
-  padding: 24px;
-  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.08);
-}
-
-.scanner-qr__code {
-  margin: 0 auto;
-}
-
-.scanner-qr__status {
-  margin-top: 12px;
-  color: var(--text-light);
-  font-size: 0.95rem;
-}
-
-.qr--disabled {
-  opacity: 0.3;
-  filter: grayscale(1);
-  transition:
-    opacity 0.3s ease,
-    filter 0.3s ease;
-}
-
-.qr--active {
-  opacity: 1;
-  filter: none;
-}
-
-.qr-status {
-  margin-top: 8px;
-  font-size: 14px;
   text-align: center;
-  color: #666;
 }
 
-.qr-status--loading {
-  animation: pulse 1.2s infinite ease-in-out;
+/* ============================================================
+   PAGE SCANNER WRAPPER
+   ============================================================ */
+
+.page--scanner {
+  padding-bottom: 40px;
 }
 
-@keyframes pulse {
-  0% {
-    opacity: 0.4;
-  }
-  50% {
-    opacity: 1;
-  }
-  100% {
-    opacity: 0.4;
-  }
+/* ============================================================
+   SCROLLBAR STYLING
+   ============================================================ */
+
+.overlay-log::-webkit-scrollbar,
+.wizard__log::-webkit-scrollbar {
+  width: 6px;
 }
 
+.overlay-log::-webkit-scrollbar-thumb,
+.wizard__log::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.4);
+  border-radius: 4px;
+}
+
+.overlay-log::-webkit-scrollbar-track,
+.wizard__log::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+/* ============================================================
+   UTILITY CLASSES
+   ============================================================ */
+
+.hidden {
+  display: none !important;
+}
+
+.center {
+  text-align: center;
+}
+
+.mt-10 {
+  margin-top: 10px;
+}
+.mt-20 {
+  margin-top: 20px;
+}
+.mt-30 {
+  margin-top: 30px;
+}
+
+.mb-10 {
+  margin-bottom: 10px;
+}
+.mb-20 {
+  margin-bottom: 20px;
+}
+.mb-30 {
+  margin-bottom: 30px;
+}
+
+/* ============================================================
+   FIXES & SAFETY
+   ============================================================ */
+
+/* Забезпечує, що overlay завжди поверх усього */
 .scanner-overlay {
-  position: fixed;
-  inset: 0;
-  background: #000;
-  z-index: 9999;
-  display: none;
+  z-index: 5000 !important;
 }
 
-#video {
-  width: 100vw;
-  height: 100vh;
-  object-fit: cover;
-  position: absolute;
-  inset: 0;
+/* Забезпечує, що wizard не перекриє overlay */
+.wizard {
+  position: relative;
+  z-index: 1;
 }
 
-#scanner-overlay-dark {
-  position: absolute;
-  inset: 0;
-  background: rgba(0,0,0,0.55);
+/* Виправляє можливі конфлікти з іншими відео-елементами */
+video {
+  max-width: 100%;
+  display: block;
 }
 
-#scanner-frame {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  width: 70vw;
-  height: 40vh;
-  transform: translate(-50%, -50%);
-}
-
-.corner {
-  width: 28px;
-  height: 28px;
-  border: 4px solid #00ff99;
-  position: absolute;
-}
-
-.corner.tl { top: 0; left: 0; border-right: none; border-bottom: none; }
-.corner.tr { top: 0; right: 0; border-left: none; border-bottom: none; }
-.corner.bl { bottom: 0; left: 0; border-right: none; border-top: none; }
-.corner.br { bottom: 0; right: 0; border-left: none; border-top: none; }
-
-#scanner-laser {
-  position: absolute;
-  left: 50%;
-  width: 60vw;
-  height: 3px;
-  background: rgba(255, 0, 0, 0.9);
-  transform: translateX(-50%);
-  animation: laser-move 1.8s infinite ease-in-out;
-}
-
-@keyframes laser-move {
-  0% { top: 30%; opacity: 0.2; }
-  50% { top: 50%; opacity: 1; }
-  100% { top: 70%; opacity: 0.2; }
-}
-
-.flash-btn,
-.close-scanner-btn {
-  position: absolute;
-  bottom: 24px;
-  z-index: 10;
-  background: rgba(255,255,255,0.9);
-  border-radius: 50%;
-  width: 64px;
-  height: 64px;
-  font-size: 28px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.flash-btn { right: 24px; }
-.close-scanner-btn { left: 24px; }
-
-.scan-flash {
-  animation: scanFlash 0.15s ease-out;
-}
-
-@keyframes scanFlash {
-  0% { box-shadow: inset 0 0 0 6px rgba(0,255,0,0.9); }
-  100% { box-shadow: inset 0 0 0 0 rgba(0,255,0,0); }
+/* Забезпечує, що body не зсувається при відкритті overlay */
+body {
+  overflow-x: hidden;
 }
