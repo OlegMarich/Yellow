@@ -1,4 +1,3 @@
-// server.js
 const express = require('express');
 const multer = require('multer');
 const path = require('path');
@@ -62,22 +61,16 @@ app.get('/api/ngrok-url', (req, res) => {
 });
 
 // ---------------------------
-// START SERVER + NGROK
+// START SERVER + NGROK + AUTO-RECONNECT
 // ---------------------------
 app.listen(PORT, "0.0.0.0", async () => {
   console.log(`🚀 Local server: http://${IP}:${PORT}`);
 
-  // ---------------------------
-  // CHECK NGROK TOKEN
-  // ---------------------------
   const token = process.env.NGROK_AUTHTOKEN;
 
   if (!token || token.trim() === "") {
-    console.error("❌ NGROK ERROR: NGROK_AUTHTOKEN is not set in environment variables.");
-    console.error("➡ Set it using:");
-    console.error('   setx NGROK_AUTHTOKEN "YOUR_TOKEN_HERE"');
-    console.error("➡ Then restart your terminal and run the server again.");
-    return; // stop ngrok startup
+    console.error("❌ NGROK ERROR: NGROK_AUTHTOKEN is not set.");
+    return;
   }
 
   try {
@@ -91,6 +84,7 @@ app.listen(PORT, "0.0.0.0", async () => {
 
     ngrokUrl = listener.url();
     console.log(`🔐 Public HTTPS (ngrok): ${ngrokUrl}`);
+
   } catch (err) {
     console.error("❌ NGROK ERROR:", err);
   }
