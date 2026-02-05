@@ -28,8 +28,9 @@ let selectedClient = null;
 let expectedQty = 0;
 let expectedPal = 0;
 
-let status = 'NEW';
+let status = 'NEW'; // NEW / IN_PROGRESS / COMPLETED / CANCELED
 
+// НОВА МОДЕЛЬ — boxCounts = { code: count }
 let boxCounts = {};
 
 let totalBoxes = 0;
@@ -43,6 +44,7 @@ let side2Count = 0;
 let scannedCodes = [];
 let autofocusInterval = null;
 
+// DOM refs for sides
 const side1Input = document.getElementById('side1');
 const side2Input = document.getElementById('side2');
 
@@ -132,12 +134,43 @@ async function initUniversalQR() {
   setInterval(pollNgrok, 2000);
   setInterval(pollDevice, 1500);
 }
-
 window.initUniversalQR = initUniversalQR;
-
 window.addEventListener('DOMContentLoaded', () => {
   initUniversalQR();
 });
+
+// ============================================================
+// CAMERA CHECK
+// ============================================================
+
+export async function checkCameraAccess() {
+  const statusBox = document.getElementById('qrStatus') || document.getElementById('cameraStatus');
+
+  const logLocal = (msg) => {
+    console.warn('[CameraCheck]', msg);
+    if (statusBox) statusBox.textContent = msg;
+  };
+
+  if (location.protocol !== 'https:' && location.hostname !== 'localhost') {
+    logLocal('⚠️ Camera access blocked: page not served over HTTPS');
+    return false;
+  }
+
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+    logLocal('❌ Camera API not available');
+    return false;
+  }
+
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({video: true});
+    stream.getTracks().forEach((track) => track.stop());
+    logLocal('✅ Camera access confirmed');
+    return true;
+  } catch (err) {
+    logLocal(`❌ Camera access denied: ${err.name}`);
+    return false;
+  }
+}
 
 // ============================================================
 // LOAD ORDERS
@@ -618,6 +651,7 @@ function flashOrderComplete() {
   el.classList.add('order-complete');
   setTimeout(() => el.classList.remove('order-complete'), 2000);
 }
+
 // ============================================================
 // SUMMARY (NEW MODEL)
 // ============================================================
@@ -682,7 +716,7 @@ let videoStream = null;
 let codeReader = null;
 let lastScanned = null;
 let lastScanTime = 0;
-const SCAN_COOLDOWN = 10;
+const SCAN_COOLDOWN = 600;
 const MIN_CODE_LENGTH = 4;
 
 let stopScanner = null;
@@ -767,13 +801,14 @@ async function startVideoScanner() {
     const handleScan = (result, err) => {
       if (!result) return;
 
+      const now = Date.now();
       const code = result.text.trim();
-      if (code.length < MIN_CODE_LENGTH) return;
 
-      // ПРОМИСЛОВИЙ РЕЖИМ:
-      // жодних блокувань, жодних cooldown, кожен кадр = скан
+      if (code.length < MIN_CODE_LENGTH) return;
+      if (now - lastScanTime < SCAN_COOLDOWN) return;
+
       lastScanned = code;
-      lastScanTime = Date.now();
+      lastScanTime = now;
 
       scannedCodes.push(code);
 
@@ -781,9 +816,9 @@ async function startVideoScanner() {
       if (counterEl) counterEl.textContent = scannedCodes.length;
 
       document.body.classList.add('scan-flash');
-      setTimeout(() => document.body.classList.remove('scan-flash'), 100);
+      setTimeout(() => document.body.classList.remove('scan-flash'), 150);
 
-      navigator.vibrate?.(50);
+      navigator.vibrate?.(100);
       playScanBeep?.();
 
       onScanDetected(code);
@@ -995,6 +1030,7 @@ cancelTaskBtn.addEventListener('click', () => {
     location.href = '/index.html';
   }
 });
+
 // ============================================================
 // FINAL REPORT (NEW MODEL — SORTED + COPY BUTTON)
 // ============================================================
@@ -1088,12 +1124,11 @@ document.getElementById('openFolderBtn')?.addEventListener('click', () => {
 });
 
 // ============================================================
-// WIZARD NAVIGATION (PLACED AT THE END — FIXES stopScanner ERROR)
+// WIZARD NAVIGATION (PLACED AT THE END)
 // ============================================================
 
 function showStep(n) {
   stopVideoScanner();
-
   if (n < 0) n = 0;
   if (n > 5) n = 5;
 
@@ -1109,19 +1144,18 @@ function showStep(n) {
 
 window.showStep = showStep;
 
-// NEXT buttons
 document.querySelectorAll('.wizard__next').forEach((btn) => {
   btn.addEventListener('click', () => {
     showStep(currentStep + 1);
   });
 });
 
-// BACK buttons
+// 🔥 Додаємо BACK кнопки
 document.querySelectorAll('.wizard__back').forEach((btn) => {
   btn.addEventListener('click', () => {
     showStep(currentStep - 1);
   });
 });
 
-// Initial step
+// Початковий step
 showStep(0);
