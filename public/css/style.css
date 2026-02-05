@@ -986,6 +986,52 @@ body {
   margin-bottom: 16px;
 }
 
-/* ============================================================
-   Додаткові правила/решта файлу залишені без змін
-   ============================================================ */
+
+.manual-toast {
+  position: fixed;
+  bottom: 16px;
+  left: 16px;
+  right: 16px;
+  max-width: 360px;
+  margin: 0 auto;
+  z-index: 9999;
+  pointer-events: auto;
+  transform: translateY(120%);
+  opacity: 0;
+  transition: transform 0.2s ease-out, opacity 0.2s ease-out;
+}
+
+.manual-toast--visible {
+  transform: translateY(0);
+  opacity: 1;
+}
+
+.manual-toast__content {
+  background: #111827;
+  color: #f9fafb;
+  border-radius: 12px;
+  padding: 12px 14px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+  font-size: 14px;
+}
+
+.manual-toast__title {
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+
+.manual-toast__code {
+  font-family: monospace;
+  font-size: 13px;
+  margin-bottom: 4px;
+}
+
+.manual-toast__qty {
+  margin-bottom: 8px;
+}
+
+.manual-toast__actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}

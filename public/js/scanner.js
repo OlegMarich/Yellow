@@ -234,7 +234,7 @@ document.getElementById('clientSelect').addEventListener('change', () => {
   updateLog();
   updateProgress();
 });
-
+//ч2
 // ============================================================
 // PALLET CALCULATION (UI PREVIEW ONLY)
 // ============================================================
@@ -478,12 +478,14 @@ function registerBoxScan(code, qty = 1) {
   }
 
   boxCounts[code] += qty;
-
   status = 'IN_PROGRESS';
-  saveSession();
 
-  updateLog();
-  updateProgress();
+  // важкі операції — в мікротаску, щоб не блокувати сканер
+  setTimeout(() => {
+    saveSession();
+    updateLog();
+    updateProgress();
+  }, 0);
 
   const totalScanned = Object.values(boxCounts).reduce((s, n) => s + n, 0);
   if (boxesPerPallet > 0 && totalScanned % boxesPerPallet === 0) {
@@ -527,6 +529,53 @@ document.getElementById('popupEdit').addEventListener('click', () => {
 });
 
 // ============================================================
+// NON-BLOCKING MANUAL TOAST (НЕ БЛОКУЄ ВІДЕО)
+// ============================================================
+
+function showNonBlockingManualToast(code, qty = 1) {
+  lastScannedCode = code;
+  lastQty = qty;
+
+  let toast = document.getElementById('manualToast');
+  if (!toast) {
+    toast = document.createElement('div');
+    toast.id = 'manualToast';
+    toast.className = 'manual-toast';
+    toast.innerHTML = `
+      <div class="manual-toast__content">
+        <div class="manual-toast__title">Manual quantity</div>
+        <div class="manual-toast__code" id="manualToastCode"></div>
+        <div class="manual-toast__qty">Qty: <span id="manualToastQty"></span></div>
+        <div class="manual-toast__actions">
+          <button id="manualToastOk" class="button button--primary">OK</button>
+          <button id="manualToastEdit" class="button button--secondary">Edit</button>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(toast);
+
+    document.getElementById('manualToastOk').onclick = () => {
+      registerBoxScan(lastScannedCode, lastQty);
+      hideManualToast();
+    };
+
+    document.getElementById('manualToastEdit').onclick = () => {
+      hideManualToast();
+      openManualKeyboard(lastQty);
+    };
+  }
+
+  document.getElementById('manualToastCode').textContent = code;
+  document.getElementById('manualToastQty').textContent = qty;
+
+  toast.classList.add('manual-toast--visible');
+}
+
+function hideManualToast() {
+  const toast = document.getElementById('manualToast');
+  if (toast) toast.classList.remove('manual-toast--visible');
+}
+// ============================================================
 // MANUAL KEYPAD (ENABLED)
 // ============================================================
 
@@ -558,7 +607,7 @@ window.confirmManualQty = function () {
   if (qty > 0) registerBoxScan(lastScannedCode, qty);
   window.closeManualKeyboard();
 };
-
+//ч3
 // ============================================================
 // PROGRESS (NEW MODEL)
 // ============================================================
@@ -668,9 +717,11 @@ function onScanDetected(code) {
   const mode = document.getElementById('scanMode').value;
 
   if (mode === 'auto') {
+    // максимально легка операція
     registerBoxScan(code, 1);
   } else {
-    showManualPopup(code, 1);
+    // показуємо неблокуючий тост, а не overlay
+    showNonBlockingManualToast(code, 1);
   }
 }
 
@@ -695,7 +746,7 @@ function isAndroid() {
   return /Android/i.test(navigator.userAgent);
 }
 
-async function getCameraStream() {
+async function getCameraStream(facingMode = 'environment') {
   const ios = isIOS();
 
   return await navigator.mediaDevices.getUserMedia({
@@ -729,7 +780,7 @@ async function applyCameraFeatures(track) {
   };
 }
 
-async function startVideoScanner() {
+async function startVideoScanner(facingMode = 'environment') {
   lastScanned = null;
   lastScanTime = 0;
   scannedCodes = [];
@@ -738,7 +789,7 @@ async function startVideoScanner() {
   const flashBtn = document.getElementById('flashToggle');
 
   try {
-    const stream = await getCameraStream();
+    const stream = await getCameraStream(facingMode);
     video.srcObject = stream;
     videoStream = stream;
 
@@ -747,11 +798,13 @@ async function startVideoScanner() {
     const track = stream.getVideoTracks()[0];
     const features = await applyCameraFeatures(track);
 
+    // AUTOFOCUS
     if (features.supportsFocus && isAndroid()) {
       clearInterval(autofocusInterval);
       autofocusInterval = setInterval(() => features.enableAutofocus(), 5000);
     }
 
+    // FLASH BUTTON
     if (features.supportsTorch) {
       flashBtn.style.display = 'block';
       flashBtn.onclick = () => {
@@ -762,6 +815,16 @@ async function startVideoScanner() {
       flashBtn.style.display = 'none';
     }
 
+    // CAMERA CONTROL BUTTONS (додаємо ОДИН раз)
+    document.getElementById('stopVideoScanner')?.addEventListener('click', () => {
+      stopVideoScanner();
+    });
+
+    document.getElementById('closeScanner')?.addEventListener('click', () => {
+      stopVideoScanner();
+    });
+
+    // INIT ZXING
     codeReader = new ZXing.BrowserMultiFormatReader();
 
     const handleScan = (result, err) => {
@@ -770,21 +833,16 @@ async function startVideoScanner() {
       const code = result.text.trim();
       if (code.length < MIN_CODE_LENGTH) return;
 
-      // ПРОМИСЛОВИЙ РЕЖИМ:
-      // жодних блокувань, жодних cooldown, кожен кадр = скан
       lastScanned = code;
       lastScanTime = Date.now();
-
       scannedCodes.push(code);
 
       const counterEl = document.getElementById('scanCounter');
       if (counterEl) counterEl.textContent = scannedCodes.length;
 
+      // легкий flash
       document.body.classList.add('scan-flash');
-      setTimeout(() => document.body.classList.remove('scan-flash'), 100);
-
-      navigator.vibrate?.(50);
-      playScanBeep?.();
+      setTimeout(() => document.body.classList.remove('scan-flash'), 80);
 
       onScanDetected(code);
     };
@@ -823,9 +881,39 @@ function stopVideoScanner() {
 
   document.body.classList.remove('scan-flash');
 
-  showScanResultsPopup();
+  // показ результатів — тільки якщо ми реально завершили задачу (крок 5)
+  if (currentStep === 5) {
+    showScanResultsPopup();
+  }
+}
+// ============================================================
+// CAMERA CONTROL BUTTONS
+// ============================================================
+
+let isPaused = false;
+
+function pauseVideoScanner() {
+  if (!videoStream) return;
+  isPaused = true;
+  videoStream.getVideoTracks()[0].enabled = false;
 }
 
+function resumeVideoScanner() {
+  if (!videoStream) return;
+  isPaused = false;
+  videoStream.getVideoTracks()[0].enabled = true;
+}
+
+async function switchCamera() {
+  if (!videoStream) return;
+
+  const currentFacing = videoStream.getVideoTracks()[0].getSettings().facingMode;
+  const newFacing = currentFacing === 'environment' ? 'user' : 'environment';
+
+  stopVideoScanner();
+  await startVideoScanner(newFacing);
+}
+//ч4
 // ============================================================
 // POPUP WITH FORMATTED RESULTS
 // ============================================================
@@ -971,6 +1059,21 @@ document.getElementById('startVideoScanner').onclick = () => {
 
   startVideoScanner();
 };
+document.getElementById('pauseScan')?.addEventListener('click', () => {
+  if (isPaused) {
+    resumeVideoScanner();
+  } else {
+    pauseVideoScanner();
+  }
+});
+
+document.getElementById('stopScan')?.addEventListener('click', () => {
+  stopVideoScanner();
+});
+
+document.getElementById('switchCamera')?.addEventListener('click', () => {
+  switchCamera();
+});
 
 // ============================================================
 // GLOBAL MENU LOGIC
@@ -1092,7 +1195,7 @@ document.getElementById('openFolderBtn')?.addEventListener('click', () => {
 // ============================================================
 
 function showStep(n) {
-  stopVideoScanner();
+  const wasScanningStep = currentStep === 3; // припускаю, що сканер на кроці 3
 
   if (n < 0) n = 0;
   if (n > 5) n = 5;
@@ -1105,6 +1208,13 @@ function showStep(n) {
   if (target) target.classList.add('active');
 
   currentStep = n;
+
+  const isScanningStep = currentStep === 3;
+
+  // якщо виходимо зі сканування — тоді стоп
+  if (wasScanningStep && !isScanningStep) {
+    stopVideoScanner();
+  }
 }
 
 window.showStep = showStep;
