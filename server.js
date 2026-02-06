@@ -1,11 +1,12 @@
+require('dotenv').config();
+
 const express = require('express');
-const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
 const os = require('os');
 
 const app = express();
-const PORT = 3000;
+const PORT = Number(process.env.PORT) || 3000;
 
 // ---------------------------
 // DIRECTORIES
@@ -22,7 +23,7 @@ const publicDir = path.join(__dirname, 'public');
 // ---------------------------
 // MIDDLEWARE
 // ---------------------------
-app.use(express.json());
+app.use(express.json({limit: '10mb'}));
 app.use('/storage', express.static(storageDir));
 app.use('/output', express.static(outputDir));
 app.use(express.static(publicDir));
@@ -45,47 +46,98 @@ function getLocalIP() {
 const IP = getLocalIP();
 
 // ---------------------------
-// API: DEVICE PING
-// ---------------------------
-app.get('/api/device-ping', (req, res) => {
-  res.json({ok: true, time: Date.now()});
-});
-
-// ---------------------------
-// API: NGROK URL
+// API
 // ---------------------------
 let ngrokUrl = null;
+
+app.get('/api/device-ping', (req, res) => {
+  res.json({
+    ok: true,
+    serverTime: Date.now(),
+    serverIP: IP,
+  });
+});
 
 app.get('/api/ngrok-url', (req, res) => {
   res.json({url: ngrokUrl});
 });
 
-// ---------------------------
-// START SERVER + NGROK + AUTO-RECONNECT
-// ---------------------------
-app.listen(PORT, "0.0.0.0", async () => {
-  console.log(`🚀 Local server: http://${IP}:${PORT}`);
+app.get('/api/server-info', (req, res) => {
+  res.json({
+    local: `http://${IP}:${PORT}`,
+    https: ngrokUrl,
+    env: process.env.NODE_ENV || 'development',
+  });
+});
 
+// ---------------------------
+// START SERVER + NGROK
+// ---------------------------
+let server;
+let ngrokListener;
+
+async function startNgrok() {
   const token = process.env.NGROK_AUTHTOKEN;
-
-  if (!token || token.trim() === "") {
-    console.error("❌ NGROK ERROR: NGROK_AUTHTOKEN is not set.");
+  if (!token) {
+    console.error('❌ NGROK_AUTHTOKEN is missing!');
     return;
   }
 
   try {
-    const ngrok = await import("@ngrok/ngrok");
+    const ngrok = await import('@ngrok/ngrok');
 
-    const listener = await ngrok.forward({
+    ngrokListener = await ngrok.forward({
       addr: PORT,
       authtoken: token,
-      region: "eu",
+      region: 'eu',
     });
 
-    ngrokUrl = listener.url();
+    ngrokUrl = ngrokListener.url();
     console.log(`🔐 Public HTTPS (ngrok): ${ngrokUrl}`);
-
   } catch (err) {
-    console.error("❌ NGROK ERROR:", err);
+    console.error('❌ NGROK ERROR, retry in 5s:', err.message);
+    setTimeout(startNgrok, 5000);
   }
-});
+}
+
+async function startServer() {
+  server = app.listen(PORT, '0.0.0.0', () => {
+    console.log('====================================');
+    console.log(`🚀 Local server: http://${IP}:${PORT}`);
+    console.log(`🌐 LAN access: http://${IP}:${PORT}`);
+    console.log('====================================');
+  });
+
+  await startNgrok();
+}
+
+// ---------------------------
+// GRACEFUL SHUTDOWN
+// ---------------------------
+async function shutdown() {
+  console.log('\n🛑 Shutting down server...');
+
+  if (ngrokListener) {
+    try {
+      await ngrokListener.close();
+      console.log('✅ Ngrok closed');
+    } catch (e) {
+      console.error('⚠️ Failed to close ngrok');
+    }
+  }
+
+  if (server) {
+    server.close(() => {
+      console.log('✅ HTTP server closed');
+      process.exit(0);
+    });
+  }
+}
+
+process.on('SIGINT', shutdown);
+process.on('SIGTERM', shutdown);
+
+// ---------------------------
+// RUN
+// ---------------------------
+startServer();

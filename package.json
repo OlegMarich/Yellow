@@ -1,29 +1,22 @@
 {
   "name": "banana-reports-server",
   "version": "1.0.0",
-  "main": "run-all.js",
+  "description": "",
+  "type": "commonjs",
+  "main": "server.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "concurrently \"node server.js\" \"C:\\Users\\maric\\AppData\\Roaming\\npm\\ngrok.cmd http 3000\""
+    "start": "node server.js"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
   "dependencies": {
     "@ngrok/ngrok": "^1.7.0",
     "cors": "^2.8.5",
+    "dotenv": "^17.2.4",
     "exceljs": "^4.4.0",
     "express": "^5.1.0",
     "form-data": "^4.0.5",
     "inquirer": "^8.2.7",
     "multer": "^2.0.1",
-    "ngrok": "^5.0.0-beta.2",
     "node-fetch": "^2.7.0",
     "xlsx": "^0.18.5"
-  },
-  "description": "",
-  "type": "commonjs",
-  "devDependencies": {
-    "concurrently": "^9.2.1"
   }
 }
