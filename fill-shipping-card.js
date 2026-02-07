@@ -31,6 +31,17 @@ function getISOWeek(dateStr) {
   return `week${Math.floor((date - firstThursday) / (7 * 24 * 60 * 60 * 1000)) + 1}`;
 }
 
+function splitPlates(carNumber) {
+  if (!carNumber) return ['', ''];
+  const tokens = carNumber.split(' ').filter(Boolean);
+
+  if (tokens.length === 1) return [tokens[0], ''];
+  if (tokens.length === 2) return [tokens[0], tokens[1]];
+  if (tokens.length >= 3) return [tokens[0], tokens.slice(1).join(' ')];
+
+  return ['', ''];
+}
+
 // -----------------------------
 // MAIN
 // -----------------------------
@@ -53,6 +64,12 @@ if (!fs.existsSync(jsonPath)) {
 const data = JSON.parse(fs.readFileSync(jsonPath, 'utf-8'));
 const templatePath = path.join(__dirname, 'shipping card.xlsx');
 
+if (!fs.existsSync(templatePath)) {
+  console.error(`❌ Не знайдено шаблон shipping card.xlsx`);
+  process.exit(1);
+}
+
+// Якщо JSON порожній — створюємо один пустий запис, щоб не падати
 const safeData =
   Array.isArray(data) && data.length > 0
     ? data

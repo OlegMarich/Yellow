@@ -74,6 +74,11 @@ if (!fs.existsSync(templatePath)) {
   process.exit(1);
 }
 
+if (!fs.existsSync(transportPath)) {
+  console.error(`❌ Не знайдено транспортний JSON: ${transportPath}`);
+  process.exit(1);
+}
+
 const transportData = JSON.parse(fs.readFileSync(transportPath, 'utf-8'));
 const outputDir = path.join(__dirname, 'output', selectedDate);
 if (!fs.existsSync(outputDir)) fs.mkdirSync(outputDir, {recursive: true});

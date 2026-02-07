@@ -22,15 +22,14 @@ if (document.body.dataset.mode === 'plan') {
 }
 
 // =====================
-// Вибір файлів (для REPORT MODE)
+// Вибір файлів
 // =====================
 selectBtn?.addEventListener('click', () => fileInput?.click());
 
 fileInput?.addEventListener('change', (event) => {
   selectedFiles = Array.from(event.target.files);
 
-  if (document.body.dataset.mode !== 'plan' && selectedFiles.length > 0) {
-    generateBtn.style.display = 'inline-block';
+  if (selectedFiles.length > 0) {
     dropZone.innerHTML = `Selected: <strong>${selectedFiles.map((f) => f.name).join(', ')}</strong>`;
   }
 });
@@ -39,16 +38,8 @@ fileInput?.addEventListener('change', (event) => {
 // Кнопка Generate
 // =====================
 generateBtn?.addEventListener('click', () => {
-  const mode = document.body.dataset.mode;
-
-  if (mode === 'plan') {
-    weekInput.value = '';
-    modalWeekPrompt.style.display = 'flex';
-  } else if (mode === 'report') {
-    handleDailyReport();
-  } else {
-    alert('❌ Unknown mode. Set <body data-mode="plan"> або "report".');
-  }
+  weekInput.value = '';
+  modalWeekPrompt.style.display = 'flex';
 });
 
 // =====================
@@ -65,20 +56,26 @@ document.getElementById('confirmWeekBtn')?.addEventListener('click', async () =>
     return alert('⚠️ Please enter a valid week number (1–53).');
   }
 
+  if (selectedFiles.length === 0) {
+    return showModalMessage('⚠️ Please select sales.xlsx file.');
+  }
+
   modalWeekPrompt.style.display = 'none';
   generateBtn.disabled = true;
   generateBtn.textContent = 'Generating...';
 
   try {
-    const response = await fetch(`/api/generate-plan?week=${week}`);
+    const formData = new FormData();
+    selectedFiles.forEach((file) => formData.append('files', file));
 
-    if (!response.ok) {
-      return showModalMessage(`❌ Server error: ${response.status}`);
-    }
+    const response = await fetch(`/upload-plan?week=${week}`, {
+      method: 'POST',
+      body: formData,
+    });
 
     const result = await response.json();
 
-    if (result.message?.includes('✅')) {
+    if (result.success) {
       generatedPath = `week${week}`;
       showModalMessage(`✅ Plan for <strong>week ${week}</strong> generated.`);
     } else {
@@ -110,50 +107,3 @@ document.getElementById('modalOkBtn')?.addEventListener('click', () => {
     window.open(`/output/${generatedPath}`, '_blank');
   }
 });
-
-// =====================
-// REPORT MODE (старий режим)
-// =====================
-async function handleDailyReport() {
-  const dateInput = document.getElementById('reportDate');
-  const date = dateInput?.value;
-
-  if (!date || !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
-    return showModalMessage('⚠️ Please select a valid date (YYYY-MM-DD).');
-  }
-
-  if (selectedFiles.length === 0) {
-    return showModalMessage('⚠️ Please select both Excel files.');
-  }
-
-  const formData = new FormData();
-  selectedFiles.forEach((file) => formData.append('files', file));
-
-  try {
-    generateBtn.disabled = true;
-    generateBtn.textContent = 'Generating...';
-
-    const response = await fetch(`/upload?date=${date}`, {
-      method: 'POST',
-      body: formData,
-    });
-
-    if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-
-    const result = await response.json();
-
-    if (result.success) {
-      generatedPath = result.date;
-      showModalMessage(
-        `✅ Report for <strong>${result.date}</strong> generated.<br>See <code>/output/${result.date}</code>`,
-      );
-    } else {
-      showModalMessage('❌ Failed to generate report.');
-    }
-  } catch (err) {
-    showModalMessage('❌ Something went wrong.');
-  } finally {
-    generateBtn.disabled = false;
-    generateBtn.textContent = 'Generate';
-  }
-}

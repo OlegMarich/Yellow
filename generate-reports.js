@@ -130,28 +130,28 @@ function getClientPalletInfo(locationName, productId, defaultInfo) {
   return entry[productId] || defaultInfo;
 }
 
-function findSalesPlanEntry(clientId, productId, date) {
-  for (const item of salesPlan.items) {
-    if (item.customer.id !== clientId) continue;
-    if (item.product.id !== productId) continue;
-    const d = item.dates.find((x) => x.date === date);
-    if (d) return d;
-  }
-  return null;
-}
-
 // ===============================
 // MAIN
 // ===============================
 async function main() {
   console.log(`📁 Використовуємо temp директорію: ${baseDir}`);
 
-  const transportPath = path.join(baseDir, 'transportPlan.xlsx');
-  if (!fs.existsSync(transportPath)) {
-    console.error(`❌ Не знайдено transport plan у temp: ${transportPath}`);
+  // ===============================
+  // NEW: Автоматичний пошук транспортного файлу
+  // ===============================
+  const transportFile = fs
+    .readdirSync(baseDir)
+    .find((f) => f.toLowerCase().endsWith('_transportplan.xlsx'));
+
+  if (!transportFile) {
+    console.error(`❌ Не знайдено transport plan у temp (очікується *_transportPlan.xlsx)`);
     process.exit(1);
   }
 
+  const transportPath = path.join(baseDir, transportFile);
+  console.log(`📄 Використовуємо транспортний файл: ${transportFile}`);
+
+  // Читаємо Excel
   const workbook = xlsx.readFile(transportPath);
 
   function normalizeDateString(str) {

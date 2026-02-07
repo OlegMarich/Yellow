@@ -12,6 +12,26 @@ function parseQty(value) {
   return Number(value) || 0;
 }
 
+function splitPlates(carNumber) {
+  if (!carNumber) return ['', ''];
+  const tokens = carNumber.split(' ').filter(Boolean);
+
+  if (tokens.length === 1) return [tokens[0], ''];
+  if (tokens.length === 2) return [tokens[0], tokens[1]];
+  if (tokens.length >= 3) return [tokens[0], tokens.slice(1).join(' ')];
+
+  return ['', ''];
+}
+
+function getISOWeek(dateStr) {
+  const date = new Date(dateStr);
+  date.setHours(0, 0, 0, 0);
+  date.setDate(date.getDate() + 3 - ((date.getDay() + 6) % 7));
+  const firstThursday = new Date(date.getFullYear(), 0, 4);
+  firstThursday.setDate(firstThursday.getDate() + 3 - ((firstThursday.getDay() + 6) % 7));
+  return `week${Math.floor((date - firstThursday) / (7 * 24 * 60 * 60 * 1000)) + 1}`;
+}
+
 // -----------------------------
 // MAIN
 // -----------------------------
@@ -23,21 +43,10 @@ if (!selectedDate) {
 
 const [year, month, day] = selectedDate.split('-');
 const fileName = `${day}.${month}_transportPlanData.json`;
-
-function getISOWeek(dateStr) {
-  const date = new Date(dateStr);
-  date.setHours(0, 0, 0, 0);
-  date.setDate(date.getDate() + 3 - ((date.getDay() + 6) % 7));
-  const firstThursday = new Date(date.getFullYear(), 0, 4);
-  firstThursday.setDate(firstThursday.getDate() + 3 - ((firstThursday.getDay() + 6) % 7));
-  const weekNumber = Math.floor((date - firstThursday) / (7 * 24 * 60 * 60 * 1000)) + 1;
-  return `week${weekNumber}`;
-}
-
 const weekArg = getISOWeek(selectedDate);
 
 // -----------------------------
-// LOAD JSON (новий транспортний план)
+// LOAD JSON
 // -----------------------------
 const jsonPath = path.join(__dirname, 'storage', weekArg, fileName);
 
@@ -53,8 +62,13 @@ const outputDir = path.join(__dirname, 'output', selectedDate);
 const templatePath = path.join(__dirname, 'clean-template.xlsx');
 const outputPath = path.join(outputDir, 'Clean list.xlsx');
 
+if (!fs.existsSync(templatePath)) {
+  console.error(`❌ Не знайдено шаблон clean-template.xlsx`);
+  process.exit(1);
+}
+
 // -----------------------------
-// GENERATE CLEAN LIST (один файл)
+// GENERATE CLEAN LIST
 // -----------------------------
 (async () => {
   if (!fs.existsSync(outputDir)) fs.mkdirSync(outputDir, {recursive: true});
@@ -92,23 +106,21 @@ const outputPath = path.join(outputDir, 'Clean list.xlsx');
   for (const entry of data) {
     const client = `${entry.customer?.short || ''} ${entry.locationCountry || ''} - ${entry.location || ''}`;
 
-    const [truckPlate, trailerPlate] = (entry.carNumber || '').split(' ');
+    const [truckPlate, trailerPlate] = splitPlates(entry.carNumber);
 
     const row = sheet.getRow(currentRow);
     const cells = [
       {col: 'B', value: selectedDate},
       {col: 'C', value: client},
-      {col: 'D', value: truckPlate || ''},
-      {col: 'E', value: trailerPlate || ''},
+      {col: 'D', value: truckPlate},
+      {col: 'E', value: trailerPlate},
       {col: 'F', value: selectedDate},
     ];
 
     for (const {col, value} of cells) {
       const cell = row.getCell(col);
-      if (value !== '') {
-        cell.value = value;
-        cell.border = borderStyle;
-      }
+      cell.value = value;
+      cell.border = borderStyle;
     }
 
     row.commit();
@@ -125,9 +137,7 @@ const outputPath = path.join(outputDir, 'Clean list.xlsx');
     const row = sheet.getRow(rowNum);
     for (let col = 1; col <= 9; col++) {
       const cell = row.getCell(col);
-      if (!cell.border || !cell.border.top) {
-        cell.border = borderStyle;
-      }
+      cell.border = borderStyle;
     }
     row.commit();
   }

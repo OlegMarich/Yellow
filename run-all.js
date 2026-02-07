@@ -24,7 +24,7 @@ function run(cmd, label) {
 // ---------------------------
 async function main() {
   const date = process.argv[2];
-  const tempDir = process.argv[3]; // 🔥 тепер tempDir передає server.js
+  const tempDir = process.argv[3]; // tempDir передає server.js
 
   if (!date || !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
     console.error('❌ No valid date provided (YYYY-MM-DD)');
@@ -36,25 +36,48 @@ async function main() {
     process.exit(1);
   }
 
-  // Перевіряємо, чи є файли
-  const salesPath = path.join(tempDir, 'salesPlan.xlsx');
-  const transportPath = path.join(tempDir, 'transportPlan.xlsx');
+  // ---------------------------
+  // Detect files in temp
+  // ---------------------------
 
-  if (!fs.existsSync(salesPath)) {
+  // PLAN MODE file (optional in REPORT MODE)
+  const salesPath = path.join(tempDir, 'salesPlan.xlsx');
+
+  // REPORT MODE file (dynamic name like 29.01_transportPlan.xlsx)
+  const transportFile = fs
+    .readdirSync(tempDir)
+    .find((f) => f.toLowerCase().endsWith('_transportplan.xlsx'));
+
+  const transportPath = transportFile ? path.join(tempDir, transportFile) : null;
+
+  // Determine mode
+  const isReportMode = !!transportFile && !fs.existsSync(salesPath);
+  const isPlanMode = fs.existsSync(salesPath);
+
+  // ---------------------------
+  // Validate
+  // ---------------------------
+
+  if (!transportPath) {
+    console.error(`❌ No transport plan found in temp (expected *_transportPlan.xlsx)`);
+    process.exit(1);
+  }
+
+  if (isPlanMode && !fs.existsSync(salesPath)) {
     console.error(`❌ Missing salesPlan.xlsx in temp: ${salesPath}`);
     process.exit(1);
   }
 
-  if (!fs.existsSync(transportPath)) {
-    console.error(`❌ Missing transportPlan.xlsx in temp: ${transportPath}`);
-    process.exit(1);
-  }
-
   console.log(`📁 Using temp directory: ${tempDir}`);
+  console.log(`📄 Transport file detected: ${transportFile}`);
+  console.log(`🔍 Mode: ${isReportMode ? 'REPORT MODE' : 'PLAN MODE'}`);
 
   const templatePath = path.join(__dirname, 'client-template.xlsx');
 
-  const scripts = [
+  // ---------------------------
+  // REPORT MODE scripts
+  // ---------------------------
+  const reportScripts = [
     {file: 'generate-reports.js', label: 'generate-reports.js', args: `"${tempDir}"`},
     {file: 'fill-template-loading.js', label: 'fill-template-loading.js', args: `"${tempDir}"`},
     {file: 'fill-template-client.js', label: 'fill-template-client.js', args: `"${templatePath}"`},
@@ -65,7 +88,8 @@ async function main() {
   try {
     console.log(`🚀 Starting full report generation for ${date}\n`);
 
-    for (const {file, label, args} of scripts) {
+    // REPORT MODE → запускаємо тільки REPORT-скрипти
+    for (const {file, label, args} of reportScripts) {
       const scriptPath = path.join(__dirname, file);
       const cmd = `node "${scriptPath}" ${date} ${args}`;
       await run(cmd, label);

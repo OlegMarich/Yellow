@@ -42,258 +42,186 @@
   <!-- WIZARD STEPS -->
   <div class="wizard">
 
-    <!-- STEP 0 — PHONE CONNECTION -->
-    <div class="wizard__step" id="step0">
+    <!-- STEP 0 -->
+    <div class="wizard__step active" id="step0">
       <h2 class="wizard__title">Step 1 — Connect Mobile Scanner</h2>
 
-      <div class="scanner-qr">
-        <h3 class="scanner-qr__title">📱 Phone Connection</h3>
-        <p class="scanner-qr__description">
-          Scan the QR code with your phone to open the mobile scanner.
-        </p>
+      <div class="wizard__content">
+        <div class="scanner-qr">
+          <h3 class="scanner-qr__title">📱 Phone Connection</h3>
+          <p class="scanner-qr__description">
+            Scan the QR code with your phone to open the mobile scanner.
+          </p>
 
-        <div class="scanner-qr__box">
-          <div id="qrBox" class="scanner-qr__code"></div>
-          <div id="qrStatus" class="scanner-qr__status"></div>
-        </div>
+          <div class="scanner-qr__box">
+            <div id="qrBox" class="scanner-qr__code"></div>
+            <div id="qrStatus" class="scanner-qr__status"></div>
+          </div>
 
-        <div id="qrDeviceStatus" class="qr-panel__device">
-          <span class="qr-device__dot"></span>
-          <span class="qr-device__text">No device connected</span>
+          <div id="qrDeviceStatus" class="qr-panel__device">
+            <span class="qr-device__dot"></span>
+            <span class="qr-device__text">No device connected</span>
+          </div>
         </div>
       </div>
 
-      <button class="wizard__back button button--secondary button--full">
-        ← Back
-      </button>
-
-      <button class="wizard__next button button--primary button--full">
-        Continue →
-      </button>
-
-      <button class="button button--secondary button--full" onclick="exitTaskSafely()">
-        ✖ Close
-      </button>
+      <div class="wizard__button-row">
+        <button class="wizard__back button button--secondary button--full">← Back</button>
+        <button class="wizard__next button button--primary button--full">Continue →</button>
+        <button class="button button--secondary button--full" onclick="exitTaskSafely()">✖ Close</button>
+      </div>
     </div>
 
     <!-- STEP 1 -->
     <div class="wizard__step" id="step1">
       <h2 class="wizard__title">Step 2 — Select Date & Client</h2>
 
-      <label class="form__label">
-        Date:
-        <input type="date" id="scanDate" class="input">
-      </label>
+      <div class="wizard__content">
+        <label class="form__label">
+          Date:
+          <input type="date" id="scanDate" class="input">
+        </label>
 
-      <button id="loadOrders" class="button button--primary button--full">
-        Load Orders
-      </button>
+        <button id="loadOrders" class="button button--primary button--full">
+          Load Orders
+        </button>
 
-      <label class="form__label">
-        Client:
-        <select id="clientSelect" class="select">
-          <option value="">— select a client —</option>
-        </select>
-      </label>
+        <label class="form__label">
+          Client:
+          <select id="clientSelect" class="select">
+            <option value="">— select a client —</option>
+          </select>
+        </label>
 
-      <div id="orderStatus" class="wizard__info"></div>
+        <div id="orderStatus" class="wizard__info"></div>
+      </div>
 
-      <button class="wizard__back button button--secondary button--full">
-        ← Back
-      </button>
-
-      <button class="wizard__next button button--primary button--full">
-        Next →
-      </button>
-
-      <button class="button button--secondary button--full" onclick="exitTaskSafely()">
-        ✖ Close
-      </button>
+      <div class="wizard__button-row">
+        <button class="wizard__back button button--secondary button--full">← Back</button>
+        <button class="wizard__next button button--primary button--full">Next →</button>
+        <button class="button button--secondary button--full" onclick="exitTaskSafely()">✖ Close</button>
+      </div>
     </div>
 
     <!-- STEP 2 -->
     <div class="wizard__step" id="step2">
       <h2 class="wizard__title">Step 3 — Confirm Pallet Info</h2>
 
-      <label class="form__label">
-        Pallet Type:
-        <select id="palletType" class="select">
-          <option value="EURO PALLETS">Euro (4 columns)</option>
-          <option value="IND. PALLETS">Industrial (6 columns)</option>
-          <option value="PHP mini">PHP mini (2 columns)</option>
-        </select>
-      </label>
+      <div class="wizard__content">
+        <label class="form__label">
+          Pallet Type:
+          <select id="palletType" class="select">
+            <option value="EURO PALLETS">Euro</option>
+            <option value="IND. PALLETS">Industrial</option>
+            <option value="PHP mini">PHP mini</option>
+          </select>
+        </label>
 
-      <label class="form__label">
-        Boxes per pallet:
-        <input type="number" id="palletHeight" class="input" inputmode="numeric">
-      </label>
+        <label class="form__label">
+          Boxes per pallet:
+          <input type="number" id="palletHeight" class="input">
+        </label>
 
-      <label class="form__label">
-        Number of rows:
-        <input type="number" id="rowsCount" class="input" value="1" inputmode="numeric">
-      </label>
+        <label class="form__label">
+          Number of rows:
+          <input type="number" id="rowsCount" class="input" value="1">
+        </label>
 
-      <div id="rowCheck" class="wizard__info"></div>
+        <div id="rowCheck" class="wizard__info"></div>
+      </div>
 
-      <button class="wizard__back button button--secondary button--full">
-        ← Back
-      </button>
-
-      <button class="wizard__next button button--primary button--full">
-        Next →
-      </button>
-
-      <button class="button button--secondary button--full" onclick="exitTaskSafely()">
-        ✖ Close
-      </button>
+      <div class="wizard__button-row">
+        <button class="wizard__back button button--secondary button--full">← Back</button>
+        <button class="wizard__next button button--primary button--full">Next →</button>
+        <button class="button button--secondary button--full" onclick="exitTaskSafely()">✖ Close</button>
+      </div>
     </div>
 
     <!-- STEP 3 -->
     <div class="wizard__step" id="step3">
       <h2 class="wizard__title">Step 4 — Select Mode</h2>
 
-      <label class="form__label">
-        Mode:
-        <select id="scanMode" class="select">
-          <option value="auto">AUTO — fast scanning</option>
-          <option value="manual">MANUAL — adjustable quantity</option>
-        </select>
-      </label>
+      <div class="wizard__content">
+        <label class="form__label">
+          Mode:
+          <select id="scanMode" class="select">
+            <option value="auto">AUTO — fast scanning</option>
+            <option value="manual">MANUAL — adjustable quantity</option>
+          </select>
+        </label>
 
-      <div class="wizard__info">
-        AUTO → always +1<br>
-        MANUAL → +1 by default, but editable
+        <div class="wizard__info">
+          AUTO → always +1<br>
+          MANUAL → editable quantity
+        </div>
       </div>
 
-      <button class="wizard__back button button--secondary button--full">
-        ← Back
-      </button>
-
-      <button class="wizard__next button button--primary button--full">
-        Start scanning →
-      </button>
-
-      <button class="button button--secondary button--full" onclick="exitTaskSafely()">
-        ✖ Close
-      </button>
+      <div class="wizard__button-row">
+        <button class="wizard__back button button--secondary button--full">← Back</button>
+        <button class="wizard__next button button--primary button--full">Start scanning →</button>
+        <button class="button button--secondary button--full" onclick="exitTaskSafely()">✖ Close</button>
+      </div>
     </div>
 
     <!-- STEP 4 -->
     <div class="wizard__step" id="step4">
       <h2 class="wizard__title">Step 5 — Scanning</h2>
 
-      <div class="pallet-sides">
-        <label class="form__label">
-          Side 1:
-          <input type="number" id="side1" class="input side-input" value="0" inputmode="numeric">
-        </label>
+      <div class="wizard__content">
+        <div class="pallet-sides">
+          <label class="form__label">
+            Side 1:
+            <input type="number" id="side1" class="input">
+          </label>
 
-        <label class="form__label">
-          Side 2:
-          <input type="number" id="side2" class="input side-input" value="0" inputmode="numeric">
-        </label>
-      </div>
-
-      <button id="startVideoScanner" class="button button--primary button--full">
-        🎥 Start Scanner
-      </button>
-
-      <button onclick="reopenLastScanResults()" class="button button--secondary button--full">
-        📄 View last results
-      </button>
-
-      <div id="scanFlash" class="scan-flash">+1</div>
-
-      <div class="progress">
-        <div id="progressBar" class="progress__bar"></div>
-      </div>
-
-      <div class="side-progress">
-        <div class="side-progress__item">
-          <label>Side 1</label>
-          <div class="progress">
-            <div id="side1Bar" class="progress__bar"></div>
-          </div>
-          <div id="side1Info" class="side-progress__info"></div>
+          <label class="form__label">
+            Side 2:
+            <input type="number" id="side2" class="input">
+          </label>
         </div>
 
-        <div class="side-progress__item">
-          <label>Side 2</label>
-          <div class="progress">
-            <div id="side2Bar" class="progress__bar"></div>
-          </div>
-          <div id="side2Info" class="side-progress__info"></div>
-        </div>
+        <button id="startVideoScanner" class="button button--primary button--full">
+          🎥 Start Scanner
+        </button>
+
+        <div id="containerInfo" class="wizard__info"></div>
+
+        <input type="text" id="scanInput" class="input" placeholder="Scanned code">
+        <div id="log" class="wizard__log"></div>
       </div>
 
-      <div id="containerInfo" class="wizard__info">
-        <b>Container:</b> —<br>
-        <b>Boxes:</b> 0 / 0
+      <div class="wizard__button-row">
+        <button class="wizard__back button button--secondary button--full">← Back</button>
+        <button id="finishBtn" class="button button--primary button--full">Finish</button>
+        <button class="button button--secondary button--full" onclick="exitTaskSafely()">✖ Close</button>
       </div>
-
-      <div id="palletCheck" class="wizard__info"></div>
-
-      <input type="text" id="scanInput" class="input" placeholder="Scanned number..." autocomplete="off">
-
-      <label class="form__label">
-        Quantity:
-        <div class="qty">
-          <input type="number" id="qtyInput" class="input qty__input" value="1" inputmode="numeric">
-          <button id="manualPlusBtn" class="button button--primary qty__plus" type="button">+</button>
-        </div>
-      </label>
-
-      <div id="log" class="wizard__log"></div>
-
-      <button class="wizard__back button button--secondary button--full">
-        ← Back
-      </button>
-
-      <button id="finishBtn" class="button button--primary button--full">
-        Finish Scanning
-      </button>
-
-      <button class="button button--secondary button--full" onclick="exitTaskSafely()">
-        ✖ Close
-      </button>
     </div>
 
     <!-- STEP 5 -->
     <div class="wizard__step" id="step5">
       <h2 class="wizard__title">Step 6 — Summary</h2>
 
-      <div id="finalReport" class="report-box"></div>
-      <div id="summary" class="wizard__info"></div>
+      <div class="wizard__content">
+        <div id="finalReport" class="report-box"></div>
+        <div id="summary" class="wizard__info"></div>
 
-      <button id="generateReportBtn" class="button button--primary button--full">
-        Generate Counter Report
-      </button>
+        <button id="generateReportBtn" class="button button--primary button--full">
+          Generate Report
+        </button>
 
-      <button id="downloadReportBtn" class="button button--primary button--full">
-        ⬇ Download Counter.xlsx
-      </button>
+        <button id="downloadReportBtn" class="button button--primary button--full">
+          ⬇ Download
+        </button>
+      </div>
 
-      <button id="openFolderBtn" class="button button--secondary button--full">
-        📂 Open Folder
-      </button>
-
-      <div id="reportStatus" class="wizard__info"></div>
-
-      <button class="button button--secondary button--full" onclick="location.href='/index.html'">
-        ← Back to Home
-      </button>
-
-      <button class="wizard__back button button--secondary button--full">
-        ← Back
-      </button>
-
-      <button class="button button--secondary button--full" onclick="exitTaskSafely()">
-        ✖ Close
-      </button>
+      <div class="wizard__button-row">
+        <button class="wizard__back button button--secondary button--full">← Back</button>
+        <button class="button button--secondary button--full" onclick="exitTaskSafely()">✖ Close</button>
+      </div>
     </div>
 
   </div>
+
 
   <!-- MANUAL CONFIRM POPUP -->
   <div id="manualConfirm" class="popup">
