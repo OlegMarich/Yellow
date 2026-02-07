@@ -28,9 +28,8 @@ let selectedClient = null;
 let expectedQty = 0;
 let expectedPal = 0;
 
-let status = 'NEW'; // NEW / IN_PROGRESS / COMPLETED / CANCELED
+let status = 'NEW';
 
-// НОВА МОДЕЛЬ — boxCounts = { code: count }
 let boxCounts = {};
 
 let totalBoxes = 0;
@@ -44,7 +43,6 @@ let side2Count = 0;
 let scannedCodes = [];
 let autofocusInterval = null;
 
-// DOM refs for sides
 const side1Input = document.getElementById('side1');
 const side2Input = document.getElementById('side2');
 
@@ -59,7 +57,7 @@ function sessionKey() {
 }
 
 // ============================================================
-// UNIVERSAL QR CODE
+// UNIVERSAL QR CODE (LAN VERSION)
 // ============================================================
 
 async function initUniversalQR() {
@@ -92,35 +90,38 @@ async function initUniversalQR() {
     new QRCode(qrBox, {text: url, width: 180, height: 180});
   };
 
-  const getNgrokUrl = async () => {
+  const getServerUrl = async () => {
     try {
-      const res = await fetch('/api/ngrok-url');
-      const {url} = await res.json();
-      return url;
+      const res = await fetch('/api/server-info');
+      const data = await res.json();
+
+      return data.lanUrl + '/components/scanner.html';
     } catch {
       return null;
     }
   };
 
-  const placeholder = 'https://waiting-for-ngrok.example/standby';
+  // --- початковий QR
+  const placeholder = 'http://waiting-for-server.local';
   renderQR(placeholder);
-  setStatus('Waiting for ngrok…', true);
+  setStatus('Waiting for server…', true);
 
-  const pollNgrok = async () => {
-    const ngrokUrl = await getNgrokUrl();
-    if (ngrokUrl && currentUrl !== ngrokUrl) {
-      renderQR(ngrokUrl);
-      setStatus('ngrok connected — HTTPS active');
+  // --- опитування сервера
+  const pollServer = async () => {
+    const serverUrl = await getServerUrl();
+    if (serverUrl && currentUrl !== serverUrl) {
+      renderQR(serverUrl);
+      setStatus(`Server active — LAN URL: ${serverUrl}`);
     }
   };
 
   const pollDevice = async () => {
     try {
       const res = await fetch('/api/device-ping');
-      const {lastPing} = await res.json();
+      const data = await res.json();
 
-      if (lastPing && lastPing !== lastDevicePing) {
-        lastDevicePing = lastPing;
+      if (data.serverTime && data.serverTime !== lastDevicePing) {
+        lastDevicePing = data.serverTime;
         setDeviceStatus(true);
       }
     } catch {
@@ -128,49 +129,18 @@ async function initUniversalQR() {
     }
   };
 
-  pollNgrok();
+  pollServer();
   pollDevice();
 
-  setInterval(pollNgrok, 2000);
+  setInterval(pollServer, 2000);
   setInterval(pollDevice, 1500);
 }
+
 window.initUniversalQR = initUniversalQR;
+
 window.addEventListener('DOMContentLoaded', () => {
   initUniversalQR();
 });
-
-// ============================================================
-// CAMERA CHECK
-// ============================================================
-
-export async function checkCameraAccess() {
-  const statusBox = document.getElementById('qrStatus') || document.getElementById('cameraStatus');
-
-  const logLocal = (msg) => {
-    console.warn('[CameraCheck]', msg);
-    if (statusBox) statusBox.textContent = msg;
-  };
-
-  if (location.protocol !== 'https:' && location.hostname !== 'localhost') {
-    logLocal('⚠️ Camera access blocked: page not served over HTTPS');
-    return false;
-  }
-
-  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-    logLocal('❌ Camera API not available');
-    return false;
-  }
-
-  try {
-    const stream = await navigator.mediaDevices.getUserMedia({video: true});
-    stream.getTracks().forEach((track) => track.stop());
-    logLocal('✅ Camera access confirmed');
-    return true;
-  } catch (err) {
-    logLocal(`❌ Camera access denied: ${err.name}`);
-    return false;
-  }
-}
 
 // ============================================================
 // LOAD ORDERS
@@ -267,7 +237,7 @@ document.getElementById('clientSelect').addEventListener('change', () => {
   updateLog();
   updateProgress();
 });
-
+//ч2
 // ============================================================
 // PALLET CALCULATION (UI PREVIEW ONLY)
 // ============================================================
@@ -511,12 +481,14 @@ function registerBoxScan(code, qty = 1) {
   }
 
   boxCounts[code] += qty;
-
   status = 'IN_PROGRESS';
-  saveSession();
 
-  updateLog();
-  updateProgress();
+  // важкі операції — в мікротаску, щоб не блокувати сканер
+  setTimeout(() => {
+    saveSession();
+    updateLog();
+    updateProgress();
+  }, 0);
 
   const totalScanned = Object.values(boxCounts).reduce((s, n) => s + n, 0);
   if (boxesPerPallet > 0 && totalScanned % boxesPerPallet === 0) {
@@ -558,7 +530,54 @@ document.getElementById('popupEdit').addEventListener('click', () => {
   closeManualPopup();
   openManualKeyboard(lastQty);
 });
+//ч3
+// ============================================================
+// NON-BLOCKING MANUAL TOAST (НЕ БЛОКУЄ ВІДЕО)
+// ============================================================
 
+function showNonBlockingManualToast(code, qty = 1) {
+  lastScannedCode = code;
+  lastQty = qty;
+
+  let toast = document.getElementById('manualToast');
+  if (!toast) {
+    toast = document.createElement('div');
+    toast.id = 'manualToast';
+    toast.className = 'manual-toast';
+    toast.innerHTML = `
+      <div class="manual-toast__content">
+        <div class="manual-toast__title">Manual quantity</div>
+        <div class="manual-toast__code" id="manualToastCode"></div>
+        <div class="manual-toast__qty">Qty: <span id="manualToastQty"></span></div>
+        <div class="manual-toast__actions">
+          <button id="manualToastOk" class="button button--primary">OK</button>
+          <button id="manualToastEdit" class="button button--secondary">Edit</button>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(toast);
+
+    document.getElementById('manualToastOk').onclick = () => {
+      registerBoxScan(lastScannedCode, lastQty);
+      hideManualToast();
+    };
+
+    document.getElementById('manualToastEdit').onclick = () => {
+      hideManualToast();
+      openManualKeyboard(lastQty);
+    };
+  }
+
+  document.getElementById('manualToastCode').textContent = code;
+  document.getElementById('manualToastQty').textContent = qty;
+
+  toast.classList.add('manual-toast--visible');
+}
+
+function hideManualToast() {
+  const toast = document.getElementById('manualToast');
+  if (toast) toast.classList.remove('manual-toast--visible');
+}
 // ============================================================
 // MANUAL KEYPAD (ENABLED)
 // ============================================================
@@ -651,7 +670,6 @@ function flashOrderComplete() {
   el.classList.add('order-complete');
   setTimeout(() => el.classList.remove('order-complete'), 2000);
 }
-
 // ============================================================
 // SUMMARY (NEW MODEL)
 // ============================================================
@@ -702,9 +720,11 @@ function onScanDetected(code) {
   const mode = document.getElementById('scanMode').value;
 
   if (mode === 'auto') {
+    // максимально легка операція
     registerBoxScan(code, 1);
   } else {
-    showManualPopup(code, 1);
+    // показуємо неблокуючий тост, а не overlay
+    showNonBlockingManualToast(code, 1);
   }
 }
 
@@ -716,7 +736,7 @@ let videoStream = null;
 let codeReader = null;
 let lastScanned = null;
 let lastScanTime = 0;
-const SCAN_COOLDOWN = 600;
+const SCAN_COOLDOWN = 10;
 const MIN_CODE_LENGTH = 4;
 
 let stopScanner = null;
@@ -729,7 +749,7 @@ function isAndroid() {
   return /Android/i.test(navigator.userAgent);
 }
 
-async function getCameraStream() {
+async function getCameraStream(facingMode = 'environment') {
   const ios = isIOS();
 
   return await navigator.mediaDevices.getUserMedia({
@@ -763,7 +783,7 @@ async function applyCameraFeatures(track) {
   };
 }
 
-async function startVideoScanner() {
+async function startVideoScanner(facingMode = 'environment') {
   lastScanned = null;
   lastScanTime = 0;
   scannedCodes = [];
@@ -772,7 +792,7 @@ async function startVideoScanner() {
   const flashBtn = document.getElementById('flashToggle');
 
   try {
-    const stream = await getCameraStream();
+    const stream = await getCameraStream(facingMode);
     video.srcObject = stream;
     videoStream = stream;
 
@@ -781,11 +801,13 @@ async function startVideoScanner() {
     const track = stream.getVideoTracks()[0];
     const features = await applyCameraFeatures(track);
 
+    // AUTOFOCUS
     if (features.supportsFocus && isAndroid()) {
       clearInterval(autofocusInterval);
       autofocusInterval = setInterval(() => features.enableAutofocus(), 5000);
     }
 
+    // FLASH BUTTON
     if (features.supportsTorch) {
       flashBtn.style.display = 'block';
       flashBtn.onclick = () => {
@@ -796,30 +818,34 @@ async function startVideoScanner() {
       flashBtn.style.display = 'none';
     }
 
+    // CAMERA CONTROL BUTTONS (додаємо ОДИН раз)
+    document.getElementById('stopVideoScanner')?.addEventListener('click', () => {
+      stopVideoScanner();
+    });
+
+    document.getElementById('closeScanner')?.addEventListener('click', () => {
+      stopVideoScanner();
+    });
+
+    // INIT ZXING
     codeReader = new ZXing.BrowserMultiFormatReader();
 
     const handleScan = (result, err) => {
       if (!result) return;
 
-      const now = Date.now();
       const code = result.text.trim();
-
       if (code.length < MIN_CODE_LENGTH) return;
-      if (now - lastScanTime < SCAN_COOLDOWN) return;
 
       lastScanned = code;
-      lastScanTime = now;
-
+      lastScanTime = Date.now();
       scannedCodes.push(code);
 
       const counterEl = document.getElementById('scanCounter');
       if (counterEl) counterEl.textContent = scannedCodes.length;
 
+      // легкий flash
       document.body.classList.add('scan-flash');
-      setTimeout(() => document.body.classList.remove('scan-flash'), 150);
-
-      navigator.vibrate?.(100);
-      playScanBeep?.();
+      setTimeout(() => document.body.classList.remove('scan-flash'), 80);
 
       onScanDetected(code);
     };
@@ -858,9 +884,39 @@ function stopVideoScanner() {
 
   document.body.classList.remove('scan-flash');
 
-  showScanResultsPopup();
+  // показ результатів — тільки якщо ми реально завершили задачу (крок 5)
+  if (currentStep === 5) {
+    showScanResultsPopup();
+  }
+}
+// ============================================================
+// CAMERA CONTROL BUTTONS
+// ============================================================
+
+let isPaused = false;
+
+function pauseVideoScanner() {
+  if (!videoStream) return;
+  isPaused = true;
+  videoStream.getVideoTracks()[0].enabled = false;
 }
 
+function resumeVideoScanner() {
+  if (!videoStream) return;
+  isPaused = false;
+  videoStream.getVideoTracks()[0].enabled = true;
+}
+
+async function switchCamera() {
+  if (!videoStream) return;
+
+  const currentFacing = videoStream.getVideoTracks()[0].getSettings().facingMode;
+  const newFacing = currentFacing === 'environment' ? 'user' : 'environment';
+
+  stopVideoScanner();
+  await startVideoScanner(newFacing);
+}
+//ч5
 // ============================================================
 // POPUP WITH FORMATTED RESULTS
 // ============================================================
@@ -1006,6 +1062,21 @@ document.getElementById('startVideoScanner').onclick = () => {
 
   startVideoScanner();
 };
+document.getElementById('pauseScan')?.addEventListener('click', () => {
+  if (isPaused) {
+    resumeVideoScanner();
+  } else {
+    pauseVideoScanner();
+  }
+});
+
+document.getElementById('stopScan')?.addEventListener('click', () => {
+  stopVideoScanner();
+});
+
+document.getElementById('switchCamera')?.addEventListener('click', () => {
+  switchCamera();
+});
 
 // ============================================================
 // GLOBAL MENU LOGIC
@@ -1030,7 +1101,6 @@ cancelTaskBtn.addEventListener('click', () => {
     location.href = '/index.html';
   }
 });
-
 // ============================================================
 // FINAL REPORT (NEW MODEL — SORTED + COPY BUTTON)
 // ============================================================
@@ -1124,11 +1194,12 @@ document.getElementById('openFolderBtn')?.addEventListener('click', () => {
 });
 
 // ============================================================
-// WIZARD NAVIGATION (PLACED AT THE END)
+// WIZARD NAVIGATION (PLACED AT THE END — FIXES stopScanner ERROR)
 // ============================================================
 
 function showStep(n) {
-  stopVideoScanner();
+  const wasScanningStep = currentStep === 3; // припускаю, що сканер на кроці 3
+
   if (n < 0) n = 0;
   if (n > 5) n = 5;
 
@@ -1140,22 +1211,30 @@ function showStep(n) {
   if (target) target.classList.add('active');
 
   currentStep = n;
+
+  const isScanningStep = currentStep === 3;
+
+  // якщо виходимо зі сканування — тоді стоп
+  if (wasScanningStep && !isScanningStep) {
+    stopVideoScanner();
+  }
 }
 
 window.showStep = showStep;
 
+// NEXT buttons
 document.querySelectorAll('.wizard__next').forEach((btn) => {
   btn.addEventListener('click', () => {
     showStep(currentStep + 1);
   });
 });
 
-// 🔥 Додаємо BACK кнопки
+// BACK buttons
 document.querySelectorAll('.wizard__back').forEach((btn) => {
   btn.addEventListener('click', () => {
     showStep(currentStep - 1);
   });
 });
 
-// Початковий step
+// Initial step
 showStep(0);

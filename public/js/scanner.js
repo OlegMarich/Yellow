@@ -17,13 +17,38 @@ function parseQty(v) {
 }
 
 // ============================================================
-// GLOBAL STATE (NEW MODEL)
+// BUSINESS DATE (09:00 → 09:00)
+// ============================================================
+
+function getBusinessDateNow() {
+  const now = new Date();
+  if (now.getHours() < 9) {
+    now.setDate(now.getDate() - 1);
+  }
+  now.setHours(0, 0, 0, 0);
+  return now;
+}
+
+function formatDateISO(d) {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
+function getBusinessDateISO() {
+  return formatDateISO(getBusinessDateNow());
+}
+
+// ============================================================
+// GLOBAL STATE
 // ============================================================
 
 let currentStep = 0;
 
 let transportData = [];
 let selectedClient = null;
+let currentDateISO = null;
 
 let expectedQty = 0;
 let expectedPal = 0;
@@ -51,13 +76,13 @@ const side2Input = document.getElementById('side2');
 // ============================================================
 
 function sessionKey() {
-  const date = document.getElementById('scanDate').value || 'no-date';
+  const date = document.getElementById('scanDate').value || currentDateISO || 'no-date';
   const client = selectedClient || 'no-client';
   return `scannerSession::${date}::${client}`;
 }
 
 // ============================================================
-// UNIVERSAL QR CODE (LAN VERSION)
+// UNIVERSAL QR (OPTIONAL)
 // ============================================================
 
 async function initUniversalQR() {
@@ -65,6 +90,8 @@ async function initUniversalQR() {
   const qrStatus = document.getElementById('qrStatus');
   const deviceDot = document.querySelector('.qr-device__dot');
   const deviceText = document.querySelector('.qr-device__text');
+
+  if (!qrBox || !qrStatus || !deviceDot || !deviceText) return;
 
   let currentUrl = null;
   let lastDevicePing = 0;
@@ -94,19 +121,16 @@ async function initUniversalQR() {
     try {
       const res = await fetch('/api/server-info');
       const data = await res.json();
-
       return data.lanUrl + '/components/scanner.html';
     } catch {
       return null;
     }
   };
 
-  // --- початковий QR
   const placeholder = 'http://waiting-for-server.local';
   renderQR(placeholder);
   setStatus('Waiting for server…', true);
 
-  // --- опитування сервера
   const pollServer = async () => {
     const serverUrl = await getServerUrl();
     if (serverUrl && currentUrl !== serverUrl) {
@@ -138,12 +162,70 @@ async function initUniversalQR() {
 
 window.initUniversalQR = initUniversalQR;
 
-window.addEventListener('DOMContentLoaded', () => {
-  initUniversalQR();
-});
+// ============================================================
+// PREFETCH WEEK ORDERS
+// ============================================================
+
+async function listWeekFiles(weekArg) {
+  try {
+    const res = await fetch(`/api/list-week?week=${encodeURIComponent(weekArg)}`);
+    if (!res.ok) return [];
+    return await res.json();
+  } catch (e) {
+    console.warn('listWeekFiles error', e);
+    return [];
+  }
+}
+
+function extractDateFromFilename(fileName, yearFallback) {
+  const m = /^(\d{2})\.(\d{2})_transportPlanData\.json$/i.exec(fileName);
+  if (!m) return null;
+  const dd = m[1];
+  const mm = m[2];
+  const y = yearFallback || new Date().getFullYear();
+  return `${y}-${mm}-${dd}`;
+}
+
+async function downloadAndCacheFile(weekArg, fileName, dateISO) {
+  const cacheKey = `orders::${dateISO}`;
+  if (localStorage.getItem(cacheKey)) return;
+
+  try {
+    const res = await fetch(`/storage/${weekArg}/${fileName}`);
+    if (!res.ok) return;
+    const json = await res.json();
+    localStorage.setItem(cacheKey, JSON.stringify(json));
+    console.log('[PREFETCH] cached', dateISO, fileName);
+  } catch (e) {
+    console.warn('downloadAndCacheFile error', fileName, e);
+  }
+}
+
+async function prefetchWeekOrders() {
+  const bizDate = getBusinessDateNow();
+  const dateISO = formatDateISO(bizDate);
+  const weekArg = getISOWeek(dateISO);
+  const year = bizDate.getFullYear();
+
+  console.log('[PREFETCH] business date:', dateISO, 'week:', weekArg);
+
+  const files = await listWeekFiles(weekArg);
+  if (!Array.isArray(files) || !files.length) {
+    console.log('[PREFETCH] no files for week', weekArg);
+    return;
+  }
+
+  const transportFiles = files.filter((f) => /_transportPlanData\.json$/i.test(f));
+
+  for (const file of transportFiles) {
+    const dateFromFile = extractDateFromFilename(file, year);
+    if (!dateFromFile) continue;
+    await downloadAndCacheFile(weekArg, file, dateFromFile);
+  }
+}
 
 // ============================================================
-// LOAD ORDERS
+// LOAD ORDERS (FROM CACHE ONLY)
 // ============================================================
 
 document.getElementById('loadOrders').addEventListener('click', async () => {
@@ -153,21 +235,26 @@ document.getElementById('loadOrders').addEventListener('click', async () => {
     return;
   }
 
-  const [y, m, d] = date.split('-');
-  const fileName = `${d}.${m}_transportPlanData.json`;
-  const weekArg = getISOWeek(date);
+  currentDateISO = date;
+
+  const cacheKey = `orders::${date}`;
+  const raw = localStorage.getItem(cacheKey);
+
+  if (!raw) {
+    alert('No cached orders for this date. Ensure server was available when opening scanner.');
+    return;
+  }
 
   try {
-    const res = await fetch(`/storage/${weekArg}/${fileName}`);
-    if (!res.ok) throw new Error('HTTP ' + res.status);
-
-    transportData = await res.json();
-    fillClientList();
-    log('✅ Order loaded');
+    transportData = JSON.parse(raw);
   } catch (e) {
-    console.error(e);
-    log('❌ Failed to load orders JSON');
+    console.error('Failed to parse cached orders JSON', e);
+    alert('Corrupted cached data for this date');
+    return;
   }
+
+  fillClientList();
+  log('✅ Orders loaded from cache');
 });
 
 function initOrderCounters(order) {
@@ -185,8 +272,20 @@ function initOrderCounters(order) {
 }
 
 // ============================================================
-// FILL CLIENT LIST
+// FILTER COMPLETED CLIENTS
 // ============================================================
+
+function isClientCompletedForDate(dateISO, clientName) {
+  const key = `scannerSession::${dateISO}::${clientName}`;
+  try {
+    const raw = localStorage.getItem(key);
+    if (!raw) return false;
+    const data = JSON.parse(raw);
+    return data.status === 'COMPLETED';
+  } catch {
+    return false;
+  }
+}
 
 function fillClientList() {
   const select = document.getElementById('clientSelect');
@@ -196,7 +295,13 @@ function fillClientList() {
 
   transportData.forEach((e) => {
     const name = `${e.customer?.short || 'UNKNOWN'} ${e.locationCountry || ''} - ${e.location || ''}`;
-    unique.add(name);
+    if (!currentDateISO) {
+      unique.add(name);
+    } else {
+      if (!isClientCompletedForDate(currentDateISO, name)) {
+        unique.add(name);
+      }
+    }
   });
 
   [...unique].sort().forEach((name) => {
@@ -237,6 +342,23 @@ document.getElementById('clientSelect').addEventListener('change', () => {
   updateLog();
   updateProgress();
 });
+
+// ============================================================
+// INITIALIZATION
+// ============================================================
+
+window.addEventListener('DOMContentLoaded', async () => {
+  const scanDateInput = document.getElementById('scanDate');
+  if (scanDateInput) {
+    const bizISO = getBusinessDateISO();
+    scanDateInput.value = bizISO;
+    currentDateISO = bizISO;
+  }
+
+  await prefetchWeekOrders();
+  initUniversalQR();
+});
+
 //ч2
 // ============================================================
 // PALLET CALCULATION (UI PREVIEW ONLY)
@@ -285,7 +407,7 @@ function updateStatusUI() {
 }
 
 // ============================================================
-// LIVE COUNTERS (NEW MODEL)
+// LIVE COUNTERS
 // ============================================================
 
 side1Input.addEventListener('input', () => {
@@ -375,7 +497,7 @@ window.cancelOrder = function () {
 };
 
 // ============================================================
-// LOCAL STORAGE (NEW MODEL)
+// LOCAL STORAGE SESSION
 // ============================================================
 
 function saveSession() {
@@ -430,7 +552,7 @@ function loadSession() {
 }
 
 // ============================================================
-// LOG (NEW MODEL)
+// LOG
 // ============================================================
 
 function updateLog() {
@@ -453,6 +575,7 @@ function log(msg) {
   logBox.scrollTop = logBox.scrollHeight;
 }
 
+//ч3
 // ============================================================
 // SCAN LOGIC (NEW MODEL)
 // ============================================================
@@ -483,7 +606,6 @@ function registerBoxScan(code, qty = 1) {
   boxCounts[code] += qty;
   status = 'IN_PROGRESS';
 
-  // важкі операції — в мікротаску, щоб не блокувати сканер
   setTimeout(() => {
     saveSession();
     updateLog();
@@ -532,7 +654,7 @@ document.getElementById('popupEdit').addEventListener('click', () => {
 });
 
 // ============================================================
-// NON-BLOCKING MANUAL TOAST (НЕ БЛОКУЄ ВІДЕО)
+// NON-BLOCKING MANUAL TOAST
 // ============================================================
 
 function showNonBlockingManualToast(code, qty = 1) {
@@ -578,8 +700,9 @@ function hideManualToast() {
   const toast = document.getElementById('manualToast');
   if (toast) toast.classList.remove('manual-toast--visible');
 }
+
 // ============================================================
-// MANUAL KEYPAD (ENABLED)
+// MANUAL KEYPAD
 // ============================================================
 
 window.openManualKeyboard = function (startValue = 1) {
@@ -610,9 +733,9 @@ window.confirmManualQty = function () {
   if (qty > 0) registerBoxScan(lastScannedCode, qty);
   window.closeManualKeyboard();
 };
-//ч3
+
 // ============================================================
-// PROGRESS (NEW MODEL)
+// PROGRESS
 // ============================================================
 
 function getTotalScanned() {
@@ -670,8 +793,9 @@ function flashOrderComplete() {
   el.classList.add('order-complete');
   setTimeout(() => el.classList.remove('order-complete'), 2000);
 }
+
 // ============================================================
-// SUMMARY (NEW MODEL)
+// SUMMARY
 // ============================================================
 
 function fillSummary() {
@@ -693,25 +817,34 @@ function fillSummary() {
   `;
 }
 
+// ============================================================
+// SAVE SCAN RESULT (SERVER OPTIONAL)
+// ============================================================
+
 async function saveScanResult() {
   const date = document.getElementById('scanDate').value;
 
-  await fetch('/api/save-scan-result', {
-    method: 'POST',
-    headers: {'Content-Type': 'application/json'},
-    body: JSON.stringify({
-      client: selectedClient,
-      date,
-      boxCounts,
-      totalBoxes,
-      boxesPerPallet,
-      totalPallets,
-    }),
-  });
+  // Якщо сервер недоступний — просто пропускаємо
+  try {
+    await fetch('/api/save-scan-result', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({
+        client: selectedClient,
+        date,
+        boxCounts,
+        totalBoxes,
+        boxesPerPallet,
+        totalPallets,
+      }),
+    });
+  } catch (e) {
+    console.warn('saveScanResult: server unreachable');
+  }
 }
 
 // ============================================================
-// SCAN HANDLER (NEW MODEL)
+// SCAN HANDLER
 // ============================================================
 
 function onScanDetected(code) {
@@ -720,14 +853,13 @@ function onScanDetected(code) {
   const mode = document.getElementById('scanMode').value;
 
   if (mode === 'auto') {
-    // максимально легка операція
     registerBoxScan(code, 1);
   } else {
-    // показуємо неблокуючий тост, а не overlay
     showNonBlockingManualToast(code, 1);
   }
 }
 
+//ч4
 // ============================================================
 // UNIVERSAL VIDEO SCANNER — Android + iOS
 // ============================================================
@@ -754,7 +886,7 @@ async function getCameraStream(facingMode = 'environment') {
 
   return await navigator.mediaDevices.getUserMedia({
     video: {
-      facingMode: 'environment',
+      facingMode: facingMode,
       width: {ideal: ios ? 640 : 1280},
       height: {ideal: ios ? 480 : 720},
     },
@@ -818,7 +950,7 @@ async function startVideoScanner(facingMode = 'environment') {
       flashBtn.style.display = 'none';
     }
 
-    // CAMERA CONTROL BUTTONS (додаємо ОДИН раз)
+    // STOP BUTTONS
     document.getElementById('stopVideoScanner')?.addEventListener('click', () => {
       stopVideoScanner();
     });
@@ -827,7 +959,7 @@ async function startVideoScanner(facingMode = 'environment') {
       stopVideoScanner();
     });
 
-    // INIT ZXING
+    // ZXING INIT
     codeReader = new ZXing.BrowserMultiFormatReader();
 
     const handleScan = (result, err) => {
@@ -843,7 +975,6 @@ async function startVideoScanner(facingMode = 'environment') {
       const counterEl = document.getElementById('scanCounter');
       if (counterEl) counterEl.textContent = scannedCodes.length;
 
-      // легкий flash
       document.body.classList.add('scan-flash');
       setTimeout(() => document.body.classList.remove('scan-flash'), 80);
 
@@ -884,11 +1015,11 @@ function stopVideoScanner() {
 
   document.body.classList.remove('scan-flash');
 
-  // показ результатів — тільки якщо ми реально завершили задачу (крок 5)
   if (currentStep === 5) {
     showScanResultsPopup();
   }
 }
+
 // ============================================================
 // CAMERA CONTROL BUTTONS
 // ============================================================
@@ -916,7 +1047,7 @@ async function switchCamera() {
   stopVideoScanner();
   await startVideoScanner(newFacing);
 }
-//ч4
+
 // ============================================================
 // POPUP WITH FORMATTED RESULTS
 // ============================================================
@@ -957,20 +1088,6 @@ function showScanResultsPopup() {
 
   document.body.appendChild(popup);
 
-  popup.addEventListener('click', (e) => {
-    if (e.target === popup) {
-      // ignore
-    }
-  });
-
-  window.addEventListener(
-    'keydown',
-    (e) => {
-      if (e.key === 'Escape') e.preventDefault();
-    },
-    {once: true},
-  );
-
   document.getElementById('copyResultsBtn').onclick = () => {
     navigator.clipboard.writeText(text);
   };
@@ -983,7 +1100,7 @@ function showScanResultsPopup() {
 window.showScanResultsPopup = showScanResultsPopup;
 
 // ============================================================
-// View last results
+// VIEW LAST RESULTS
 // ============================================================
 
 window.reopenLastScanResults = function () {
@@ -1020,7 +1137,7 @@ window.reopenLastScanResults = function () {
 };
 
 // ============================================================
-// Save Last Scan Result
+// SAVE LAST SCAN RESULT
 // ============================================================
 
 function saveLastScanResult() {
@@ -1062,6 +1179,7 @@ document.getElementById('startVideoScanner').onclick = () => {
 
   startVideoScanner();
 };
+
 document.getElementById('pauseScan')?.addEventListener('click', () => {
   if (isPaused) {
     resumeVideoScanner();
@@ -1101,8 +1219,9 @@ cancelTaskBtn.addEventListener('click', () => {
     location.href = '/index.html';
   }
 });
+
 // ============================================================
-// FINAL REPORT (NEW MODEL — SORTED + COPY BUTTON)
+// FINAL REPORT (SORTED + COPY BUTTON)
 // ============================================================
 
 function generateContainerReport() {
@@ -1194,11 +1313,11 @@ document.getElementById('openFolderBtn')?.addEventListener('click', () => {
 });
 
 // ============================================================
-// WIZARD NAVIGATION (PLACED AT THE END — FIXES stopScanner ERROR)
+// WIZARD NAVIGATION
 // ============================================================
 
 function showStep(n) {
-  const wasScanningStep = currentStep === 3; // припускаю, що сканер на кроці 3
+  const wasScanningStep = currentStep === 3;
 
   if (n < 0) n = 0;
   if (n > 5) n = 5;
@@ -1214,7 +1333,6 @@ function showStep(n) {
 
   const isScanningStep = currentStep === 3;
 
-  // якщо виходимо зі сканування — тоді стоп
   if (wasScanningStep && !isScanningStep) {
     stopVideoScanner();
   }
@@ -1222,14 +1340,12 @@ function showStep(n) {
 
 window.showStep = showStep;
 
-// NEXT buttons
 document.querySelectorAll('.wizard__next').forEach((btn) => {
   btn.addEventListener('click', () => {
     showStep(currentStep + 1);
   });
 });
 
-// BACK buttons
 document.querySelectorAll('.wizard__back').forEach((btn) => {
   btn.addEventListener('click', () => {
     showStep(currentStep - 1);

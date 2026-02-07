@@ -63,6 +63,7 @@ function getISOWeek(dateStr) {
 }
 
 const IP = getLocalIP();
+const LAN_URL = `http://${IP}:${PORT}`;
 
 // ---------------------------
 // STATIC
@@ -75,9 +76,11 @@ app.use(express.static(publicDir));
 // ======================================================
 //  DEVICE PING + SERVER INFO (для scanner.js)
 // ======================================================
+
 app.get('/api/device-ping', (req, res) => {
   res.json({
     ok: true,
+    serverTime: Date.now(), // <-- те, що чекає scanner.js
     time: new Date().toISOString(),
   });
 });
@@ -87,10 +90,33 @@ app.get('/api/server-info', (req, res) => {
     status: 'running',
     ip: IP,
     port: PORT,
-    lanUrl: `http://${IP}:${PORT}`,
     tempRoot,
     time: new Date().toISOString(),
+    lanUrl: LAN_URL, // <-- для LAN
+    local: LAN_URL, // <-- те, що ти читаєш у getServerUrl
   });
+});
+
+// ======================================================
+//  LIST WEEK FILES — /api/list-week
+// ======================================================
+app.get('/api/list-week', (req, res) => {
+  const week = req.query.week;
+  if (!week) return res.json([]);
+
+  const dir = path.join(storageDir, week);
+
+  if (!fs.existsSync(dir)) {
+    return res.json([]);
+  }
+
+  try {
+    const files = fs.readdirSync(dir);
+    res.json(files);
+  } catch (err) {
+    console.error('list-week error:', err);
+    res.json([]);
+  }
 });
 
 // ======================================================
@@ -191,9 +217,10 @@ app.post('/upload-plan', upload.array('files'), (req, res) => {
   }
 });
 
-// ======================================================
-//  SALES PLAN REPORT
-// ======================================================
+// ---------------------------
+// SALES PLAN REPORT
+// ---------------------------
+
 app.get('/output/:week', (req, res) => {
   const week = req.params.week;
   const jsonPath = path.join(storageDir, week, `${week}_salesPlan.json`);
@@ -324,9 +351,10 @@ app.get('/output/:week', (req, res) => {
   `);
 });
 
-// ======================================================
-//  DAILY TRANSPORT REPORT
-// ======================================================
+// ---------------------------
+// Daily reports endpoint (for testing)
+// ---------------------------
+
 app.get('/report/day/:date', (req, res) => {
   const date = req.params.date;
 
@@ -486,8 +514,8 @@ let server;
 async function startServer() {
   server = app.listen(PORT, '0.0.0.0', () => {
     console.log('====================================');
-    console.log(`🚀 Local server: http://${IP}:${PORT}`);
-    console.log(`🌐 LAN access: http://${IP}:${PORT}`);
+    console.log(`🚀 Local server: http://localhost:${PORT}`);
+    console.log(`🌐 LAN access: ${LAN_URL}`);
     console.log('====================================');
   });
 }
