@@ -57,7 +57,7 @@ function sessionKey() {
 }
 
 // ============================================================
-// UNIVERSAL QR CODE
+// UNIVERSAL QR CODE (LAN VERSION)
 // ============================================================
 
 async function initUniversalQR() {
@@ -90,35 +90,39 @@ async function initUniversalQR() {
     new QRCode(qrBox, {text: url, width: 180, height: 180});
   };
 
-  const getNgrokUrl = async () => {
+  const getServerUrl = async () => {
     try {
-      const res = await fetch('/api/ngrok-url');
-      const {url} = await res.json();
-      return url;
+      const res = await fetch('/api/server-info');
+      const data = await res.json();
+
+      // Додаємо шлях до мобільного сканера
+      return data.local + '/components/scanner.html';
     } catch {
       return null;
     }
   };
 
-  const placeholder = 'https://waiting-for-ngrok.example/standby';
+  // --- початковий QR
+  const placeholder = 'http://waiting-for-server.local';
   renderQR(placeholder);
-  setStatus('Waiting for ngrok…', true);
+  setStatus('Waiting for server…', true);
 
-  const pollNgrok = async () => {
-    const ngrokUrl = await getNgrokUrl();
-    if (ngrokUrl && currentUrl !== ngrokUrl) {
-      renderQR(ngrokUrl);
-      setStatus('ngrok connected — HTTPS active');
+  // --- опитування сервера
+  const pollServer = async () => {
+    const serverUrl = await getServerUrl();
+    if (serverUrl && currentUrl !== serverUrl) {
+      renderQR(serverUrl);
+      setStatus(`Server active — LAN URL: ${serverUrl}`);
     }
   };
 
   const pollDevice = async () => {
     try {
       const res = await fetch('/api/device-ping');
-      const {lastPing} = await res.json();
+      const data = await res.json();
 
-      if (lastPing && lastPing !== lastDevicePing) {
-        lastDevicePing = lastPing;
+      if (data.serverTime && data.serverTime !== lastDevicePing) {
+        lastDevicePing = data.serverTime;
         setDeviceStatus(true);
       }
     } catch {
@@ -126,10 +130,10 @@ async function initUniversalQR() {
     }
   };
 
-  pollNgrok();
+  pollServer();
   pollDevice();
 
-  setInterval(pollNgrok, 2000);
+  setInterval(pollServer, 2000);
   setInterval(pollDevice, 1500);
 }
 

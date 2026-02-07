@@ -58,18 +58,19 @@ async function handleDailyReport() {
     return showModalMessage('⚠️ Please select a valid date.');
   }
 
-  if (selectedFiles.length < 2) {
-    return showModalMessage('⚠️ Please select both Excel files.');
+  // ТЕПЕР ПОТРІБЕН ЛИШЕ 1 ФАЙЛ
+  if (selectedFiles.length < 1) {
+    return showModalMessage('⚠️ Please select the transport plan file.');
   }
 
-  for (const file of selectedFiles) {
-    if (!file || file.size === 0) {
-      return showModalMessage(`⚠️ File "${file.name}" is unavailable or empty.`);
-    }
+  const file = selectedFiles[0];
+  if (!file || file.size === 0) {
+    return showModalMessage(`⚠️ File "${file?.name}" is unavailable or empty.`);
   }
 
+  // Формально FormData більше не потрібен, але залишимо для сумісності
   const formData = new FormData();
-  selectedFiles.forEach((file) => formData.append('files', file));
+  formData.append('file', file);
 
   try {
     generateBtn.disabled = true;
@@ -77,7 +78,7 @@ async function handleDailyReport() {
 
     const response = await fetch(`/api/run-all?date=${encodeURIComponent(date)}`, {
       method: 'POST',
-      body: formData,
+      body: formData, // сервер просто ігнорує файли — це ок
     });
 
     const result = await response.json();

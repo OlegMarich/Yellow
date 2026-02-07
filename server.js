@@ -4,6 +4,7 @@ const express = require('express');
 const path = require('path');
 const fs = require('fs');
 const os = require('os');
+const {exec} = require('child_process');
 
 const app = express();
 const PORT = Number(process.env.PORT) || 3000;
@@ -71,34 +72,86 @@ app.get('/api/server-info', (req, res) => {
 });
 
 // ---------------------------
+// RUN-ALL API (with folder open)
+// ---------------------------
+app.post('/api/run-all', (req, res) => {
+  const date = req.query.date;
+
+  if (!date) {
+    return res.json({success: false, message: 'No date provided'});
+  }
+
+  const cmd = `node run-all.js ${date} temp`;
+
+  console.log('▶️ Running:', cmd);
+
+  // Відповідаємо одразу, щоб браузер не зависав
+  res.json({
+    success: true,
+    date,
+    message: 'Generation started',
+  });
+
+  // Запускаємо run-all.js у фоновому режимі
+  exec(cmd, {maxBuffer: 1024 * 1024 * 20}, (err, stdout, stderr) => {
+    console.log('================ RUN-ALL OUTPUT ================');
+    if (stdout) console.log(stdout);
+    if (stderr) console.error(stderr);
+
+    if (err) {
+      console.error('❌ run-all error:', err);
+      return;
+    }
+
+    // Шукаємо дату завершення
+    const match = stdout.match(/@@@DONE:(\d{4}-\d{2}-\d{2})/);
+    const resultDate = match ? match[1] : date;
+
+    // Формуємо шлях до папки
+    const folderPath = path.join(outputDir, resultDate);
+
+    console.log('📂 Opening folder:', folderPath);
+
+    // Відкриваємо папку у Windows Explorer
+    exec(`start "" "${folderPath}"`, (openErr) => {
+      if (openErr) {
+        console.error('❌ Error opening folder:', openErr);
+      }
+    });
+
+    console.log('================================================');
+  });
+});
+
+// ---------------------------
 // START SERVER + NGROK
 // ---------------------------
 let server;
 let ngrokListener;
 
-async function startNgrok() {
-  const token = process.env.NGROK_AUTHTOKEN;
-  if (!token) {
-    console.error('❌ NGROK_AUTHTOKEN is missing!');
-    return;
-  }
+// async function startNgrok() {
+//   const token = process.env.NGROK_AUTHTOKEN;
+//   if (!token) {
+//     console.error('❌ NGROK_AUTHTOKEN is missing!');
+//     return;
+//   }
 
-  try {
-    const ngrok = await import('@ngrok/ngrok');
+//   try {
+//     const ngrok = await import('@ngrok/ngrok');
 
-    ngrokListener = await ngrok.forward({
-      addr: PORT,
-      authtoken: token,
-      region: 'eu',
-    });
+//     ngrokListener = await ngrok.forward({
+//       addr: PORT,
+//       authtoken: token,
+//       region: 'eu',
+//     });
 
-    ngrokUrl = ngrokListener.url();
-    console.log(`🔐 Public HTTPS (ngrok): ${ngrokUrl}`);
-  } catch (err) {
-    console.error('❌ NGROK ERROR, retry in 5s:', err.message);
-    setTimeout(startNgrok, 5000);
-  }
-}
+//     ngrokUrl = ngrokListener.url();
+//     console.log(`🔐 Public HTTPS (ngrok): ${ngrokUrl}`);
+//   } catch (err) {
+//     console.error('❌ NGROK ERROR, retry in 5s:', err.message);
+//     setTimeout(startNgrok, 5000);
+//   }
+// }
 
 async function startServer() {
   server = app.listen(PORT, '0.0.0.0', () => {
@@ -108,7 +161,7 @@ async function startServer() {
     console.log('====================================');
   });
 
-  await startNgrok();
+  //await startNgrok();
 }
 
 // ---------------------------
