@@ -75,7 +75,6 @@ app.use(express.static(publicDir));
 // ======================================================
 //  DEVICE PING + SERVER INFO (для scanner.js)
 // ======================================================
-
 app.get('/api/device-ping', (req, res) => {
   res.json({
     ok: true,
@@ -88,6 +87,7 @@ app.get('/api/server-info', (req, res) => {
     status: 'running',
     ip: IP,
     port: PORT,
+    lanUrl: `http://${IP}:${PORT}`,
     tempRoot,
     time: new Date().toISOString(),
   });
@@ -190,10 +190,10 @@ app.post('/upload-plan', upload.array('files'), (req, res) => {
     res.status(500).json({success: false, message: 'Internal server error'});
   }
 });
-// ---------------------------
-// SALES PLAN REPORT
-// ---------------------------
 
+// ======================================================
+//  SALES PLAN REPORT
+// ======================================================
 app.get('/output/:week', (req, res) => {
   const week = req.params.week;
   const jsonPath = path.join(storageDir, week, `${week}_salesPlan.json`);
@@ -324,10 +324,9 @@ app.get('/output/:week', (req, res) => {
   `);
 });
 
-// ---------------------------
-// Daily reports endpoint (for testing)
-// ---------------------------
-
+// ======================================================
+//  DAILY TRANSPORT REPORT
+// ======================================================
 app.get('/report/day/:date', (req, res) => {
   const date = req.params.date;
 
