@@ -95,8 +95,7 @@ async function initUniversalQR() {
       const res = await fetch('/api/server-info');
       const data = await res.json();
 
-      // Додаємо шлях до мобільного сканера
-      return data.local + '/components/scanner.html';
+      return data.lanUrl + '/components/scanner.html';
     } catch {
       return null;
     }
