@@ -786,6 +786,148 @@ window.confirmManualQty = function () {
 };
 
 // ============================================================
+// TURBO ZXING SCANNER (FAST + ROI + AUTOFOCUS + REPEAT SUPPORT)
+// ============================================================
+
+import { BrowserMultiFormatReader } from "@zxing/browser";
+
+let video = document.getElementById("video");
+let stream = null;
+let scanning = false;
+
+let codeReader = new BrowserMultiFormatReader();
+
+// дозволяємо повторні коди
+let lastCode = "";
+let lastTime = 0;
+
+// ROI canvas
+const roiCanvas = document.createElement("canvas");
+const roiCtx = roiCanvas.getContext("2d");
+
+// старт сканера
+export async function startVideoScanner() {
+  if (scanning) return;
+
+  const constraints = {
+    video: {
+      facingMode: "environment",
+      width: { ideal: 1280 },
+      height: { ideal: 720 },
+      focusMode: "continuous"
+    }
+  };
+
+  try {
+    stream = await navigator.mediaDevices.getUserMedia(constraints);
+    video.srcObject = stream;
+
+    const track = stream.getVideoTracks()[0];
+
+    // автофокус (Samsung підтримує!)
+    try {
+      await track.applyConstraints({
+        advanced: [{ focusMode: "continuous" }]
+      });
+    } catch (e) {
+      console.warn("Autofocus not supported");
+    }
+
+    scanning = true;
+    requestAnimationFrame(scanLoop);
+
+  } catch (err) {
+    console.error("Camera error:", err);
+  }
+}
+
+// зупинка
+export function stopVideoScanner() {
+  scanning = false;
+  if (stream) {
+    stream.getTracks().forEach(t => t.stop());
+  }
+}
+
+// цикл сканування
+function scanLoop() {
+  if (!scanning) return;
+
+  if (video.readyState === video.HAVE_ENOUGH_DATA) {
+    processFrame();
+  }
+
+  requestAnimationFrame(scanLoop);
+}
+
+// обробка кадру
+function processFrame() {
+  const vw = video.videoWidth;
+  const vh = video.videoHeight;
+
+  if (vw === 0 || vh === 0) return;
+
+  // ROI — центральна частина кадру
+  const roiW = vw * 0.6;
+  const roiH = vh * 0.3;
+  const roiX = vw * 0.2;
+  const roiY = vh * 0.35;
+
+  roiCanvas.width = roiW;
+  roiCanvas.height = roiH;
+
+  roiCtx.drawImage(video, roiX, roiY, roiW, roiH, 0, 0, roiW, roiH);
+
+  // контраст + бінаризація
+  const img = roiCtx.getImageData(0, 0, roiW, roiH);
+  const d = img.data;
+
+  for (let i = 0; i < d.length; i += 4) {
+    const avg = (d[i] + d[i+1] + d[i+2]) / 3;
+    const bin = avg > 140 ? 255 : 0;
+    d[i] = d[i+1] = d[i+2] = bin;
+  }
+
+  roiCtx.putImageData(img, 0, 0);
+
+  decodeFrame(roiCanvas);
+}
+
+// декодування
+async function decodeFrame(canvas) {
+  try {
+    const result = await codeReader.decodeFromCanvas(canvas);
+
+    if (result && result.text) {
+      handleDecoded(result.text.trim());
+    }
+
+  } catch (e) {
+    // no code — ігноруємо
+  }
+}
+
+// логіка повторів
+function handleDecoded(code) {
+  const now = Date.now();
+
+  // дозволяємо повтори, але не частіше ніж 3 рази/сек
+  if (code === lastCode && now - lastTime < 300) {
+    return;
+  }
+
+  lastCode = code;
+  lastTime = now;
+
+  // AUTO / MANUAL режим
+  if (document.getElementById("scanMode").value === "manual") {
+    showManualPopup(code, 1);
+  } else {
+    registerBoxScan(code, 1);
+  }
+}
+
+// ============================================================
 // PROGRESS
 // ============================================================
 
