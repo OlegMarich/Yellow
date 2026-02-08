@@ -39,6 +39,7 @@
 
     </div>
   </div>
+
   <!-- WIZARD STEPS -->
   <div class="wizard">
 
@@ -186,6 +187,18 @@
 
         <div id="containerInfo" class="wizard__info"></div>
 
+        <!-- REQUIRED BY scanner.js -->
+        <div id="palletCheck" class="wizard__info"></div>
+
+        <div class="progress-container">
+          <div id="progressBar" class="progress-bar"></div>
+        </div>
+
+        <div class="side-progress">
+          <div id="side1Bar" class="side-bar"></div>
+          <div id="side2Bar" class="side-bar"></div>
+        </div>
+
         <input type="text" id="scanInput" class="input" placeholder="Scanned code">
         <div id="log" class="wizard__log"></div>
       </div>
@@ -222,7 +235,6 @@
 
   </div>
 
-
   <!-- MANUAL CONFIRM POPUP -->
   <div id="manualConfirm" class="popup">
     <div class="popup__content">
@@ -244,13 +256,11 @@
   <!-- FULLSCREEN VIDEO SCANNER -->
   <div id="scannerOverlay" class="scanner-overlay">
     <div class="scan-frame"></div>
-    <!-- VIDEO -->
+
     <video id="video" autoplay playsinline muted></video>
 
-    <!-- DARK MASK -->
     <div class="overlay-dark"></div>
 
-    <!-- FRAME -->
     <div class="overlay-frame">
       <div class="corner tl"></div>
       <div class="corner tr"></div>
@@ -258,33 +268,26 @@
       <div class="corner br"></div>
     </div>
 
-    <!-- LASER -->
     <div class="overlay-laser"></div>
 
-    <!-- FLASH -->
     <div id="overlayFlash" class="overlay-flash"></div>
 
-    <!-- TOP INFO -->
     <div class="overlay-top">
       <div id="overlayContainerInfo" class="overlay-info"></div>
       <div id="overlayPalletCheck" class="overlay-info"></div>
     </div>
 
-    <!-- PROGRESS -->
     <div class="overlay-progress">
       <div id="overlayProgressBar" class="overlay-progress__bar"></div>
     </div>
 
-    <!-- QTY -->
     <div class="overlay-qty">
       <span>Qty:</span>
       <span id="overlayQtyValue">1</span>
     </div>
 
-    <!-- LOG -->
     <div id="overlayLog" class="overlay-log"></div>
 
-    <!-- BUTTONS -->
     <div class="overlay-buttons">
       <button id="flashToggle" class="overlay-btn">🔦</button>
       <button id="stopVideoScanner" class="overlay-btn overlay-btn--stop">✖</button>
