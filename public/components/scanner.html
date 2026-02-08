@@ -22,50 +22,32 @@
 
   <div id="globalMenu" class="global-menu">
     <div class="global-menu__content">
-
       <h3 class="global-menu__title">Menu</h3>
-
-      <button class="global-menu__item" onclick="location.href='/index.html'">
-        ← Back to Home
-      </button>
-
-      <button class="global-menu__item" id="cancelTaskBtn">
-        ✖ Cancel Task
-      </button>
-
-      <button class="global-menu__close" id="closeGlobalMenu">
-        Close
-      </button>
-
+      <button class="global-menu__item" onclick="location.href='/index.html'">← Back to Home</button>
+      <button class="global-menu__item" id="cancelTaskBtn">✖ Cancel Task</button>
+      <button class="global-menu__close" id="closeGlobalMenu">Close</button>
     </div>
   </div>
 
-  <!-- WIZARD STEPS -->
   <div class="wizard">
 
     <!-- STEP 0 -->
     <div class="wizard__step active" id="step0">
       <h2 class="wizard__title">Step 1 — Connect Mobile Scanner</h2>
-
       <div class="wizard__content">
         <div class="scanner-qr">
           <h3 class="scanner-qr__title">📱 Phone Connection</h3>
-          <p class="scanner-qr__description">
-            Scan the QR code with your phone to open the mobile scanner.
-          </p>
-
+          <p class="scanner-qr__description">Scan the QR code with your phone to open the mobile scanner.</p>
           <div class="scanner-qr__box">
             <div id="qrBox" class="scanner-qr__code"></div>
             <div id="qrStatus" class="scanner-qr__status"></div>
           </div>
-
           <div id="qrDeviceStatus" class="qr-panel__device">
             <span class="qr-device__dot"></span>
             <span class="qr-device__text">No device connected</span>
           </div>
         </div>
       </div>
-
       <div class="wizard__button-row">
         <button class="wizard__back button button--secondary button--full">← Back</button>
         <button class="wizard__next button button--primary button--full">Continue →</button>
@@ -76,19 +58,14 @@
     <!-- STEP 1 -->
     <div class="wizard__step" id="step1">
       <h2 class="wizard__title">Step 2 — Select Date & Client</h2>
-
       <div class="wizard__content">
-        <label class="form__label">
-          Date:
+        <label class="form__label">Date:
           <input type="date" id="scanDate" class="input">
         </label>
 
-        <button id="loadOrders" class="button button--primary button--full">
-          Load Orders
-        </button>
+        <button id="loadOrders" class="button button--primary button--full">Load Orders</button>
 
-        <label class="form__label">
-          Client:
+        <label class="form__label">Client:
           <select id="clientSelect" class="select">
             <option value="">— select a client —</option>
           </select>
@@ -107,10 +84,8 @@
     <!-- STEP 2 -->
     <div class="wizard__step" id="step2">
       <h2 class="wizard__title">Step 3 — Confirm Pallet Info</h2>
-
       <div class="wizard__content">
-        <label class="form__label">
-          Pallet Type:
+        <label class="form__label">Pallet Type:
           <select id="palletType" class="select">
             <option value="EURO PALLETS">Euro</option>
             <option value="IND. PALLETS">Industrial</option>
@@ -118,13 +93,11 @@
           </select>
         </label>
 
-        <label class="form__label">
-          Boxes per pallet:
+        <label class="form__label">Boxes per pallet:
           <input type="number" id="palletHeight" class="input">
         </label>
 
-        <label class="form__label">
-          Number of rows:
+        <label class="form__label">Number of rows:
           <input type="number" id="rowsCount" class="input" value="1">
         </label>
 
@@ -141,10 +114,8 @@
     <!-- STEP 3 -->
     <div class="wizard__step" id="step3">
       <h2 class="wizard__title">Step 4 — Select Mode</h2>
-
       <div class="wizard__content">
-        <label class="form__label">
-          Mode:
+        <label class="form__label">Mode:
           <select id="scanMode" class="select">
             <option value="auto">AUTO — fast scanning</option>
             <option value="manual">MANUAL — adjustable quantity</option>
@@ -169,25 +140,26 @@
       <h2 class="wizard__title">Step 5 — Scanning</h2>
 
       <div class="wizard__content">
+
         <div class="pallet-sides">
-          <label class="form__label">
-            Side 1:
+          <label class="form__label">Side 1:
             <input type="number" id="side1" class="input">
           </label>
 
-          <label class="form__label">
-            Side 2:
+          <label class="form__label">Side 2:
             <input type="number" id="side2" class="input">
           </label>
         </div>
 
-        <button id="startVideoScanner" class="button button--primary button--full">
-          🎥 Start Scanner
-        </button>
+        <div class="side-info">
+          <div id="side1Info" class="wizard__info"></div>
+          <div id="side2Info" class="wizard__info"></div>
+        </div>
+
+        <button id="startVideoScanner" class="button button--primary button--full">🎥 Start Scanner</button>
 
         <div id="containerInfo" class="wizard__info"></div>
 
-        <!-- REQUIRED BY scanner.js -->
         <div id="palletCheck" class="wizard__info"></div>
 
         <div class="progress-container">
@@ -201,6 +173,7 @@
 
         <input type="text" id="scanInput" class="input" placeholder="Scanned code">
         <div id="log" class="wizard__log"></div>
+
       </div>
 
       <div class="wizard__button-row">
@@ -218,13 +191,8 @@
         <div id="finalReport" class="report-box"></div>
         <div id="summary" class="wizard__info"></div>
 
-        <button id="generateReportBtn" class="button button--primary button--full">
-          Generate Report
-        </button>
-
-        <button id="downloadReportBtn" class="button button--primary button--full">
-          ⬇ Download
-        </button>
+        <button id="generateReportBtn" class="button button--primary button--full">Generate Report</button>
+        <button id="downloadReportBtn" class="button button--primary button--full">⬇ Download</button>
       </div>
 
       <div class="wizard__button-row">
@@ -238,7 +206,6 @@
   <!-- MANUAL CONFIRM POPUP -->
   <div id="manualConfirm" class="popup">
     <div class="popup__content">
-
       <div class="popup__title">Scanned code:</div>
       <div id="popupCode" class="popup__code"></div>
 
@@ -249,12 +216,12 @@
         <button id="popupOk" class="button button--primary">OK</button>
         <button id="popupEdit" class="button button--secondary">Edit</button>
       </div>
-
     </div>
   </div>
 
   <!-- FULLSCREEN VIDEO SCANNER -->
   <div id="scannerOverlay" class="scanner-overlay">
+
     <div class="scan-frame"></div>
 
     <video id="video" autoplay playsinline muted></video>
@@ -298,5 +265,4 @@
 
   <script type="module" src="/js/scanner.js"></script>
 </body>
-
 </html>
