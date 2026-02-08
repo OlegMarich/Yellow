@@ -1142,3 +1142,46 @@ body {
   border-color: var(--primary);
   box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.2);
 }
+
+.keypad {
+  display: none;
+}
+
+.keypad.active {
+  display: flex;
+}
+
+.keypad__content {
+  width: 260px;
+  text-align: center;
+}
+
+.keypad__display {
+  font-size: 32px;
+  padding: 10px;
+  margin-bottom: 15px;
+  background: #fff;
+  border-radius: 8px;
+}
+
+.keypad__grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin-bottom: 15px;
+}
+
+.keypad__btn {
+  padding: 15px;
+  font-size: 22px;
+  border-radius: 8px;
+  background: #eee;
+}
+
+.keypad__clear {
+  background: #ffb3b3;
+}
+
+.keypad__back {
+  background: #d0d0ff;
+}
