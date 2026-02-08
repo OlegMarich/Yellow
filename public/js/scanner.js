@@ -654,6 +654,57 @@ document.getElementById('popupEdit').addEventListener('click', () => {
 });
 
 // ============================================================
+// MANUAL KEYPAD
+// ============================================================
+
+const manualKeyboard = document.getElementById('manualKeyboard');
+const keypadDisplay = document.getElementById('keypadDisplay');
+
+let keypadValue = 1;
+
+function openManualKeyboard(startValue = 1) {
+  keypadValue = startValue;
+  keypadDisplay.textContent = keypadValue;
+  manualKeyboard.classList.add('active');
+}
+
+function closeManualKeyboard() {
+  manualKeyboard.classList.remove('active');
+}
+
+// натискання цифр
+document.querySelectorAll('.keypad__btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const val = btn.textContent;
+
+    if (val === 'C') {
+      keypadValue = 0;
+    } else if (val === '←') {
+      keypadValue = Math.floor(keypadValue / 10);
+      if (keypadValue < 1) keypadValue = 1;
+    } else {
+      keypadValue = parseInt(keypadValue.toString() + val);
+    }
+
+    keypadDisplay.textContent = keypadValue;
+  });
+});
+
+// OK → повертаємо значення у popup
+document.getElementById('keypadOk').addEventListener('click', () => {
+  lastQty = keypadValue;
+  popupQty.textContent = lastQty;
+  closeManualKeyboard();
+  showManualPopup(lastScannedCode, lastQty);
+});
+
+// Cancel → просто закриваємо
+document.getElementById('keypadCancel').addEventListener('click', () => {
+  closeManualKeyboard();
+  showManualPopup(lastScannedCode, lastQty);
+});
+
+// ============================================================
 // NON-BLOCKING MANUAL TOAST
 // ============================================================
 
