@@ -654,57 +654,6 @@ document.getElementById('popupEdit').addEventListener('click', () => {
 });
 
 // ============================================================
-// MANUAL KEYPAD
-// ============================================================
-
-const manualKeyboard = document.getElementById('manualKeyboard');
-const keypadDisplay = document.getElementById('keypadDisplay');
-
-let keypadValue = 1;
-
-function openManualKeyboard(startValue = 1) {
-  keypadValue = startValue;
-  keypadDisplay.textContent = keypadValue;
-  manualKeyboard.classList.add('active');
-}
-
-function closeManualKeyboard() {
-  manualKeyboard.classList.remove('active');
-}
-
-// натискання цифр
-document.querySelectorAll('.keypad__btn').forEach(btn => {
-  btn.addEventListener('click', () => {
-    const val = btn.textContent;
-
-    if (val === 'C') {
-      keypadValue = 0;
-    } else if (val === '←') {
-      keypadValue = Math.floor(keypadValue / 10);
-      if (keypadValue < 1) keypadValue = 1;
-    } else {
-      keypadValue = parseInt(keypadValue.toString() + val);
-    }
-
-    keypadDisplay.textContent = keypadValue;
-  });
-});
-
-// OK → повертаємо значення у popup
-document.getElementById('keypadOk').addEventListener('click', () => {
-  lastQty = keypadValue;
-  popupQty.textContent = lastQty;
-  closeManualKeyboard();
-  showManualPopup(lastScannedCode, lastQty);
-});
-
-// Cancel → просто закриваємо
-document.getElementById('keypadCancel').addEventListener('click', () => {
-  closeManualKeyboard();
-  showManualPopup(lastScannedCode, lastQty);
-});
-
-// ============================================================
 // NON-BLOCKING MANUAL TOAST
 // ============================================================
 
@@ -784,148 +733,6 @@ window.confirmManualQty = function () {
   if (qty > 0) registerBoxScan(lastScannedCode, qty);
   window.closeManualKeyboard();
 };
-
-// ============================================================
-// TURBO ZXING SCANNER (FAST + ROI + AUTOFOCUS + REPEAT SUPPORT)
-// ============================================================
-
-import { BrowserMultiFormatReader } from "@zxing/browser";
-
-let video = document.getElementById("video");
-let stream = null;
-let scanning = false;
-
-let codeReader = new BrowserMultiFormatReader();
-
-// дозволяємо повторні коди
-let lastCode = "";
-let lastTime = 0;
-
-// ROI canvas
-const roiCanvas = document.createElement("canvas");
-const roiCtx = roiCanvas.getContext("2d");
-
-// старт сканера
-export async function startVideoScanner() {
-  if (scanning) return;
-
-  const constraints = {
-    video: {
-      facingMode: "environment",
-      width: { ideal: 1280 },
-      height: { ideal: 720 },
-      focusMode: "continuous"
-    }
-  };
-
-  try {
-    stream = await navigator.mediaDevices.getUserMedia(constraints);
-    video.srcObject = stream;
-
-    const track = stream.getVideoTracks()[0];
-
-    // автофокус (Samsung підтримує!)
-    try {
-      await track.applyConstraints({
-        advanced: [{ focusMode: "continuous" }]
-      });
-    } catch (e) {
-      console.warn("Autofocus not supported");
-    }
-
-    scanning = true;
-    requestAnimationFrame(scanLoop);
-
-  } catch (err) {
-    console.error("Camera error:", err);
-  }
-}
-
-// зупинка
-export function stopVideoScanner() {
-  scanning = false;
-  if (stream) {
-    stream.getTracks().forEach(t => t.stop());
-  }
-}
-
-// цикл сканування
-function scanLoop() {
-  if (!scanning) return;
-
-  if (video.readyState === video.HAVE_ENOUGH_DATA) {
-    processFrame();
-  }
-
-  requestAnimationFrame(scanLoop);
-}
-
-// обробка кадру
-function processFrame() {
-  const vw = video.videoWidth;
-  const vh = video.videoHeight;
-
-  if (vw === 0 || vh === 0) return;
-
-  // ROI — центральна частина кадру
-  const roiW = vw * 0.6;
-  const roiH = vh * 0.3;
-  const roiX = vw * 0.2;
-  const roiY = vh * 0.35;
-
-  roiCanvas.width = roiW;
-  roiCanvas.height = roiH;
-
-  roiCtx.drawImage(video, roiX, roiY, roiW, roiH, 0, 0, roiW, roiH);
-
-  // контраст + бінаризація
-  const img = roiCtx.getImageData(0, 0, roiW, roiH);
-  const d = img.data;
-
-  for (let i = 0; i < d.length; i += 4) {
-    const avg = (d[i] + d[i+1] + d[i+2]) / 3;
-    const bin = avg > 140 ? 255 : 0;
-    d[i] = d[i+1] = d[i+2] = bin;
-  }
-
-  roiCtx.putImageData(img, 0, 0);
-
-  decodeFrame(roiCanvas);
-}
-
-// декодування
-async function decodeFrame(canvas) {
-  try {
-    const result = await codeReader.decodeFromCanvas(canvas);
-
-    if (result && result.text) {
-      handleDecoded(result.text.trim());
-    }
-
-  } catch (e) {
-    // no code — ігноруємо
-  }
-}
-
-// логіка повторів
-function handleDecoded(code) {
-  const now = Date.now();
-
-  // дозволяємо повтори, але не частіше ніж 3 рази/сек
-  if (code === lastCode && now - lastTime < 300) {
-    return;
-  }
-
-  lastCode = code;
-  lastTime = now;
-
-  // AUTO / MANUAL режим
-  if (document.getElementById("scanMode").value === "manual") {
-    showManualPopup(code, 1);
-  } else {
-    registerBoxScan(code, 1);
-  }
-}
 
 // ============================================================
 // PROGRESS
@@ -1054,17 +861,17 @@ function onScanDetected(code) {
 
 //ч4
 // ============================================================
-// UNIVERSAL VIDEO SCANNER — Android + iOS
+// HYBRID TURBO SCANNER — Android (turbo) + iOS (stable)
 // ============================================================
 
 let videoStream = null;
 let codeReader = null;
-let lastScanned = null;
-let lastScanTime = 0;
-const SCAN_COOLDOWN = 10;
+let lastCode = null;
+let lastTime = 0;
 const MIN_CODE_LENGTH = 4;
 
 let stopScanner = null;
+let autofocusInterval = null;
 
 function isIOS() {
   return /iPhone|iPad|iPod/i.test(navigator.userAgent);
@@ -1108,10 +915,14 @@ async function applyCameraFeatures(track) {
   };
 }
 
+// ROI canvas для ANDROID TURBO
+const roiCanvas = document.createElement('canvas');
+const roiCtx = roiCanvas.getContext('2d');
+
+// Головний старт
 async function startVideoScanner(facingMode = 'environment') {
-  lastScanned = null;
-  lastScanTime = 0;
-  scannedCodes = [];
+  lastCode = null;
+  lastTime = 0;
 
   const video = document.getElementById('video');
   const flashBtn = document.getElementById('flashToggle');
@@ -1133,17 +944,17 @@ async function startVideoScanner(facingMode = 'environment') {
     }
 
     // FLASH BUTTON
-    if (features.supportsTorch) {
+    if (features.supportsTorch && flashBtn) {
       flashBtn.style.display = 'block';
       flashBtn.onclick = () => {
         const active = flashBtn.classList.toggle('active');
         features.enableTorch(active);
       };
-    } else {
+    } else if (flashBtn) {
       flashBtn.style.display = 'none';
     }
 
-    // STOP BUTTONS
+    // КНОПКИ STOP / CLOSE
     document.getElementById('stopVideoScanner')?.addEventListener('click', () => {
       stopVideoScanner();
     });
@@ -1152,36 +963,24 @@ async function startVideoScanner(facingMode = 'environment') {
       stopVideoScanner();
     });
 
-    // ZXING INIT
+    // INIT ZXING
     codeReader = new ZXing.BrowserMultiFormatReader();
 
-    const handleScan = (result, err) => {
-      if (!result) return;
-
-      const code = result.text.trim();
-      if (code.length < MIN_CODE_LENGTH) return;
-
-      lastScanned = code;
-      lastScanTime = Date.now();
-      scannedCodes.push(code);
-
-      const counterEl = document.getElementById('scanCounter');
-      if (counterEl) counterEl.textContent = scannedCodes.length;
-
-      document.body.classList.add('scan-flash');
-      setTimeout(() => document.body.classList.remove('scan-flash'), 80);
-
-      onScanDetected(code);
-    };
-
     if (isIOS()) {
-      codeReader.decodeFromVideoElement(video, handleScan);
+      // iOS — стабільний режим через відео
+      codeReader.decodeFromVideoElement(video, (result, err) => {
+        if (!result) return;
+        handleDecoded(result.text.trim());
+      });
     } else {
-      codeReader.decodeContinuously(video, handleScan);
+      // ANDROID — TURBO режим через ROI + canvas
+      requestAnimationFrame(() => androidScanLoop(video));
     }
 
     stopScanner = () => {
-      codeReader?.reset();
+      try {
+        codeReader?.reset();
+      } catch (e) {}
       stream.getTracks().forEach((t) => t.stop());
       videoStream = null;
     };
@@ -1191,6 +990,83 @@ async function startVideoScanner(facingMode = 'environment') {
   }
 }
 
+// ANDROID TURBO LOOP
+function androidScanLoop(video) {
+  if (!videoStream) return;
+
+  if (video.readyState === video.HAVE_ENOUGH_DATA) {
+    processAndroidFrame(video);
+  }
+
+  requestAnimationFrame(() => androidScanLoop(video));
+}
+
+async function processAndroidFrame(video) {
+  const vw = video.videoWidth;
+  const vh = video.videoHeight;
+  if (!vw || !vh) return;
+
+  const roiW = vw * 0.6;
+  const roiH = vh * 0.3;
+  const roiX = vw * 0.2;
+  const roiY = vh * 0.35;
+
+  roiCanvas.width = roiW;
+  roiCanvas.height = roiH;
+
+  roiCtx.drawImage(video, roiX, roiY, roiW, roiH, 0, 0, roiW, roiH);
+
+  const img = roiCtx.getImageData(0, 0, roiW, roiH);
+  const d = img.data;
+
+  for (let i = 0; i < d.length; i += 4) {
+    const avg = (d[i] + d[i + 1] + d[i + 2]) / 3;
+    const bin = avg > 140 ? 255 : 0;
+    d[i] = d[i + 1] = d[i + 2] = bin;
+  }
+
+  roiCtx.putImageData(img, 0, 0);
+
+  try {
+    const result = await codeReader.decodeFromCanvas(roiCanvas);
+    if (result && result.text) {
+      handleDecoded(result.text.trim());
+    }
+  } catch (e) {
+    // no code — ігноруємо
+  }
+}
+
+// Обробка декодованого коду (Android + iOS)
+function handleDecoded(code) {
+  if (!code || code.length < MIN_CODE_LENGTH) return;
+
+  const now = Date.now();
+
+  // Дозволяємо повтори, але не частіше ніж раз на 200 мс
+  if (code === lastCode && now - lastTime < 200) {
+    return;
+  }
+
+  lastCode = code;
+  lastTime = now;
+
+  // Легкий flash
+  document.body.classList.add('scan-flash');
+  setTimeout(() => document.body.classList.remove('scan-flash'), 80);
+
+  // AUTO / MANUAL режим
+  const modeEl = document.getElementById('scanMode');
+  const mode = modeEl ? modeEl.value : 'auto';
+
+  if (mode === 'manual') {
+    showManualPopup(code, 1);
+  } else {
+    registerBoxScan(code, 1);
+  }
+}
+
+// STOP
 function stopVideoScanner() {
   stopScanner?.();
   stopScanner = null;
@@ -1199,7 +1075,9 @@ function stopVideoScanner() {
   autofocusInterval = null;
 
   if (codeReader) {
-    codeReader.reset();
+    try {
+      codeReader.reset();
+    } catch (e) {}
     codeReader = null;
   }
 
@@ -1208,11 +1086,10 @@ function stopVideoScanner() {
 
   document.body.classList.remove('scan-flash');
 
-  if (currentStep === 5) {
+  if (typeof currentStep !== 'undefined' && currentStep === 5) {
     showScanResultsPopup();
   }
 }
-
 // ============================================================
 // CAMERA CONTROL BUTTONS
 // ============================================================
