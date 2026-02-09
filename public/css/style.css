@@ -778,6 +778,13 @@ body {
   transition: background 0.2s ease;
 }
 
+.overlay-btn--mode {
+  font-weight: bold;
+  background: rgba(255,255,255,0.2);
+  border: 1px solid #fff;
+}
+
+
 .overlay-btn:hover {
   background: #ff0;
 }

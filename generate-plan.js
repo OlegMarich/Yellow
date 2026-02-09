@@ -275,6 +275,25 @@ function parseSales(sheetJson, dates) {
 }
 
 // -----------------------------
+// ISO WEEK CALC
+// -----------------------------
+function getISOWeek(dateStr) {
+  const [y, m, d] = dateStr.split('-').map(Number);
+  const date = new Date(y, m - 1, d);
+
+  const dayNr = (date.getDay() + 6) % 7;
+
+  const thursday = new Date(date);
+  thursday.setDate(date.getDate() - dayNr + 3);
+
+  const firstThursday = new Date(thursday.getFullYear(), 0, 4);
+  const firstDayNr = (firstThursday.getDay() + 6) % 7;
+  firstThursday.setDate(firstThursday.getDate() - firstDayNr + 3);
+
+  return 1 + Math.round((thursday - firstThursday) / 604800000);
+}
+
+// -----------------------------
 // MAIN
 // -----------------------------
 async function main() {
@@ -303,16 +322,11 @@ async function main() {
 
   let weekNumber;
 
-  // Якщо формат "week5"
   if (/week\d+/i.test(dateArg)) {
     weekNumber = parseInt(dateArg.replace(/week/i, ''));
-  }
-  // Якщо просто число "5"
-  else if (/^\d+$/.test(dateArg)) {
+  } else if (/^\d+$/.test(dateArg)) {
     weekNumber = parseInt(dateArg);
-  }
-  // Якщо дата
-  else {
+  } else {
     weekNumber = getISOWeek(dateArg);
   }
 
@@ -321,15 +335,28 @@ async function main() {
     process.exit(1);
   }
 
-  // 🔥 універсальний пошук листа
-  const targetSheetName =
-    sheetNames.find((s) => normalize(s).includes(`week${weekNumber}`)) ||
-    sheetNames.find((s) => normalize(s).includes('week')) ||
-    sheetNames[0];
+  console.log('📆 Week number:', weekNumber);
+  console.log('📄 Sheets:', sheetNames);
+
+  const targetSheetName = sheetNames.find((s) => {
+    const norm = normalize(s); // "week 7"
+    const compact = norm.replace(/\s+/g, ''); // "week7"
+    return compact === `week${weekNumber}`;
+  });
+
+  if (!targetSheetName) {
+    console.error(`❌ Sheet for Week${weekNumber} not found`);
+    console.log('Available sheets:', sheetNames);
+    process.exit(1);
+  }
+
+  console.log('✅ Using sheet:', targetSheetName);
 
   const sheet = workbook.Sheets[targetSheetName];
 
   const dates = extractDates(sheet);
+  console.log('📅 Extracted dates:', dates);
+
   const sheetJson = xlsx.utils.sheet_to_json(sheet, {
     header: 1,
     defval: '',
@@ -349,19 +376,6 @@ async function main() {
   );
 
   console.log(`📄 Sales plan saved: ${outPath}`);
-}
-
-// -----------------------------
-// ISO WEEK CALC
-// -----------------------------
-function getISOWeek(dateStr) {
-  const d = new Date(dateStr);
-  const target = new Date(d.valueOf());
-  const dayNr = (d.getDay() + 6) % 7;
-  target.setDate(target.getDate() - dayNr + 3);
-  const firstThursday = new Date(target.getFullYear(), 0, 4);
-  const diff = target - firstThursday;
-  return 1 + Math.round(diff / 604800000);
 }
 
 main();

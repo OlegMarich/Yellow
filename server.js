@@ -12,16 +12,14 @@ const multer = require('multer');
 // ---------------------------
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    cb(null, 'uploads/');
+    cb(null, uploadsDir);
   },
   filename: (req, file, cb) => {
     const unique = Date.now() + '-' + Math.round(Math.random() * 1e9);
     cb(null, unique + path.extname(file.originalname));
   },
 });
-
 const upload = multer({storage});
-
 const app = express();
 const PORT = Number(process.env.PORT) || 3000;
 
@@ -33,10 +31,7 @@ const outputDir = path.join(__dirname, 'output');
 const storageDir = path.join(__dirname, 'storage');
 const publicDir = path.join(__dirname, 'public');
 const tempRoot = path.join(__dirname, 'temp');
-
-[inputDir, outputDir, storageDir, tempRoot, 'uploads'].forEach((dir) => {
-  if (!fs.existsSync(dir)) fs.mkdirSync(dir, {recursive: true});
-});
+const uploadsDir = path.join(__dirname, 'uploads'); // ✅ ОГОЛОШЕНО ДО MULTER [inputDir, outputDir, storageDir, tempRoot, uploadsDir].forEach((dir) => { if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true }); });
 
 // ---------------------------
 // HELPERS
@@ -191,8 +186,21 @@ app.post('/upload-plan', upload.array('files'), (req, res) => {
       const name = file.originalname.toLowerCase();
 
       if (name.includes('sales')) {
-        fs.renameSync(file.path, path.join(tempDir, 'salesPlan.xlsx'));
-        console.log('📄 Saved salesPlan.xlsx');
+        const dest = path.join(tempDir, 'salesPlan.xlsx');
+
+        try {
+          // Windows-safe: copy instead of rename
+          fs.copyFileSync(file.path, dest);
+          fs.unlinkSync(file.path);
+
+          console.log('📄 Saved salesPlan.xlsx');
+        } catch (err) {
+          console.error('❌ SERVER ERROR (copy/move failed):', err);
+          return res.status(500).json({
+            success: false,
+            message: 'Failed to move uploaded file',
+          });
+        }
       }
     }
 
