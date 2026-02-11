@@ -576,7 +576,7 @@ function log(msg) {
 }
 
 // ============================================================
-// SCAN LOGIC (NEW MODEL)
+// SCAN LOGIC
 // ============================================================
 
 function playContainerBeep() {
@@ -670,14 +670,19 @@ function hideManualToast() {
   if (toast) toast.classList.remove('manual-toast--visible');
 }
 
-// MANUAL KEYPAD v2
+// ============================================================
+// MANUAL KEYPAD v2 (виправлений, стабільний)
+// ============================================================
 
 window.openManualKeyboard = function (startValue = 1) {
-  document.getElementById('manualQty').value = startValue;
+  manualModeActive = true; // блокуємо сканер
+  const input = document.getElementById('manualQty');
+  input.value = startValue;
   document.getElementById('manualKeyboard').classList.add('active');
 };
 
 window.closeManualKeyboard = function () {
+  manualModeActive = false; // розблоковуємо сканер
   document.getElementById('manualKeyboard').classList.remove('active');
 };
 
@@ -697,13 +702,14 @@ window.clearQty = function () {
 
 window.confirmManualQty = function () {
   const qty = Number(document.getElementById('manualQty').value);
+
   if (qty > 0) {
-    manualModeActive = false;
     registerBoxScan(lastScannedCode, qty);
   }
+
+  // важливо: спочатку закриваємо keypad, він сам зніме блокування
   window.closeManualKeyboard();
 };
-
 // ============================================================
 // PROGRESS
 // ============================================================
@@ -840,6 +846,7 @@ async function saveScanResult() {
 // ============================================================
 // SCAN HANDLER
 // ============================================================
+
 function onScanDetected(code) {
   if (!code) return;
 
@@ -856,21 +863,19 @@ function onScanDetected(code) {
     showNonBlockingManualToast(code, 1);
   }
 }
+
 // ============================================================
-// UNIVERSAL VIDEO SCANNER — Android TURBO + iOS ZXing
+// UNIVERSAL VIDEO SCANNER — Android + iOS (СТАРА РОБОЧА ВЕРСІЯ)
 // ============================================================
 
 let videoStream = null;
 let codeReader = null;
-let stopScanner = null;
-
 let lastScanned = null;
 let lastScanTime = 0;
+const SCAN_COOLDOWN = 10;
 const MIN_CODE_LENGTH = 4;
 
-// ============================================================
-// PLATFORM DETECTION
-// ============================================================
+let stopScanner = null;
 
 function isIOS() {
   return /iPhone|iPad|iPod/i.test(navigator.userAgent);
@@ -879,16 +884,13 @@ function isIOS() {
 function isAndroid() {
   return /Android/i.test(navigator.userAgent);
 }
-// ============================================================
-// CAMERA STREAM
-// ============================================================
 
 async function getCameraStream(facingMode = 'environment') {
   const ios = isIOS();
 
   return await navigator.mediaDevices.getUserMedia({
     video: {
-      facingMode,
+      facingMode: 'environment',
       width: {ideal: ios ? 640 : 1280},
       height: {ideal: ios ? 480 : 720},
     },
@@ -898,177 +900,24 @@ async function getCameraStream(facingMode = 'environment') {
 async function applyCameraFeatures(track) {
   const caps = track.getCapabilities?.() || {};
 
-  return {
-    supportsTorch: !!caps.torch,
-    supportsFocus: !!caps.focusMode,
+  const supportsTorch = !!caps.torch;
+  const supportsFocus = !!caps.focusMode;
 
+  return {
+    supportsTorch,
+    supportsFocus,
     enableTorch: async (state) => {
-      if (caps.torch) {
+      if (supportsTorch) {
         await track.applyConstraints({advanced: [{torch: state}]});
       }
     },
-
     enableAutofocus: async () => {
-      if (caps.focusMode) {
+      if (supportsFocus) {
         await track.applyConstraints({advanced: [{focusMode: 'continuous'}]});
       }
     },
   };
 }
-
-// ============================================================
-// ANDROID TURBO MODE (ROI + GRAYSCALE + TRANSFERABLE)
-// ============================================================
-
-let turboCanvas = null;
-let turboCtx = null;
-let turboWorker = null;
-let turboBusy = false;
-let turboLoop = null;
-
-function prepareAndroidROI() {
-  turboCanvas = new OffscreenCanvas(1, 1);
-  turboCtx = turboCanvas.getContext('2d', {willReadFrequently: true});
-}
-
-function binarize(imageData) {
-  const {data, width, height} = imageData;
-  const out = new Uint8ClampedArray(width * height);
-
-  for (let i = 0, j = 0; i < data.length; i += 4, j++) {
-    out[j] = (data[i] * 0.3 + data[i + 1] * 0.59 + data[i + 2] * 0.11) | 0;
-  }
-
-  return out;
-}
-
-function initTurboWorker() {
-  if (turboWorker) return;
-
-  turboWorker = new Worker('/js/qr-worker.js');
-
-  turboWorker.onmessage = (ev) => {
-    const msg = ev.data;
-
-    if (msg.type === 'result' && msg.code && !manualModeActive) {
-      const code = String(msg.code).trim();
-      if (code.length >= MIN_CODE_LENGTH) {
-        const now = Date.now();
-        if (now - lastScanTime >= 800) {
-          lastScanTime = now;
-          onScanDetected(code);
-        }
-      }
-    }
-
-    turboBusy = false;
-  };
-}
-
-function decodeAndroidFrame() {
-  if (manualModeActive) return;
-
-  const video = document.getElementById('video');
-  if (!video || video.readyState < 2) return;
-
-  const vw = video.videoWidth;
-  const vh = video.videoHeight;
-
-  const size = Math.min(vw, vh) * 0.65;
-  const x = (vw - size) / 2;
-  const y = (vh - size) / 2;
-
-  turboCanvas.width = size;
-  turboCanvas.height = size;
-
-  turboCtx.drawImage(video, x, y, size, size, 0, 0, size, size);
-
-  const frame = turboCtx.getImageData(0, 0, size, size);
-  const gray = binarize(frame);
-
-  initTurboWorker();
-
-  turboWorker.postMessage(
-    {
-      type: 'decode',
-      width: size,
-      height: size,
-      data: gray.buffer,
-    },
-    [gray.buffer],
-  );
-}
-
-function startTurboLoop() {
-  stopTurboLoop();
-
-  turboLoop = setInterval(() => {
-    if (turboBusy || manualModeActive) return;
-    turboBusy = true;
-    decodeAndroidFrame();
-
-    setTimeout(() => {
-      if (turboBusy) turboBusy = false;
-    }, 800);
-  }, 150);
-}
-
-function stopTurboLoop() {
-  if (turboLoop) clearInterval(turboLoop);
-  turboLoop = null;
-  turboBusy = false;
-}
-
-let quaggaActive = false;
-
-function startQuagga() {
-  if (quaggaActive) return;
-
-  const videoEl = document.getElementById('video');
-
-  Quagga.init(
-    {
-      inputStream: {
-        type: 'LiveStream',
-        target: videoEl,
-        constraints: {
-          facingMode: 'environment',
-        },
-      },
-      decoder: {
-        readers: ['code_128_reader'],
-      },
-      locate: true,
-    },
-    (err) => {
-      if (err) {
-        console.error('Quagga init error:', err);
-        return;
-      }
-      Quagga.start();
-      quaggaActive = true;
-
-      Quagga.onDetected((result) => {
-        if (!result || !result.codeResult || !result.codeResult.code) return;
-
-        const code = result.codeResult.code.trim();
-        if (!code || manualModeActive) return;
-
-        onScanDetected(code);
-      });
-    },
-  );
-}
-
-function stopQuagga() {
-  if (!quaggaActive) return;
-  Quagga.stop();
-  Quagga.offDetected();
-  quaggaActive = false;
-}
-// ============================================================
-// START VIDEO SCANNER
-// ============================================================
 
 async function startVideoScanner(facingMode = 'environment') {
   lastScanned = null;
@@ -1083,20 +932,18 @@ async function startVideoScanner(facingMode = 'environment') {
     video.srcObject = stream;
     videoStream = stream;
 
-    video.onloadedmetadata = () => {
-      if (video.paused) video.play().catch(() => {});
-    };
-
-    if (video.paused) await video.play().catch(() => {});
+    await video.play();
 
     const track = stream.getVideoTracks()[0];
     const features = await applyCameraFeatures(track);
 
+    // AUTOFOCUS
     if (features.supportsFocus && isAndroid()) {
       clearInterval(autofocusInterval);
       autofocusInterval = setInterval(() => features.enableAutofocus(), 5000);
     }
 
+    // FLASH BUTTON
     if (features.supportsTorch) {
       flashBtn.style.display = 'block';
       flashBtn.onclick = () => {
@@ -1107,48 +954,45 @@ async function startVideoScanner(facingMode = 'environment') {
       flashBtn.style.display = 'none';
     }
 
-    document.getElementById('stopVideoScanner')?.addEventListener('click', stopVideoScanner);
-    document.getElementById('closeScanner')?.addEventListener('click', stopVideoScanner);
+    // CAMERA CONTROL BUTTONS
+    document.getElementById('stopVideoScanner')?.addEventListener('click', () => {
+      stopVideoScanner();
+    });
 
-    // ANDROID → Turbo + Quagga
-    if (isAndroid()) {
-      prepareAndroidROI();
-      startTurboLoop();
-      startQuagga(); // ← ДОДАНО
+    document.getElementById('closeScanner')?.addEventListener('click', () => {
+      stopVideoScanner();
+    });
 
-      stopScanner = () => {
-        stopTurboLoop();
-        stopQuagga(); // ← ДОДАНО
-        stream.getTracks().forEach((t) => t.stop());
-        videoStream = null;
-      };
-
-      return;
-    }
-
-    // iOS / Desktop → ZXing + Quagga
+    // INIT ZXING
     codeReader = new ZXing.BrowserMultiFormatReader();
 
-    const handleScan = (result) => {
+    const handleScan = (result, err) => {
       if (!result) return;
 
       const code = result.text.trim();
       if (code.length < MIN_CODE_LENGTH) return;
 
-      const now = Date.now();
-      if (now - lastScanTime < 800) return;
-      lastScanTime = now;
+      lastScanned = code;
+      lastScanTime = Date.now();
+      scannedCodes.push(code);
+
+      const counterEl = document.getElementById('scanCounter');
+      if (counterEl) counterEl.textContent = scannedCodes.length;
+
+      document.body.classList.add('scan-flash');
+      setTimeout(() => document.body.classList.remove('scan-flash'), 80);
 
       onScanDetected(code);
     };
 
-    codeReader.decodeFromVideoElement(video, handleScan);
-
-    startQuagga(); // ← ДОДАНО
+    if (isIOS()) {
+      codeReader.decodeFromVideoElement(video, handleScan);
+    } else {
+      codeReader.decodeContinuously(video, handleScan);
+    }
 
     stopScanner = () => {
       codeReader?.reset();
-      stopQuagga(); // ← ДОДАНО
       stream.getTracks().forEach((t) => t.stop());
       videoStream = null;
     };
@@ -1158,15 +1002,9 @@ async function startVideoScanner(facingMode = 'environment') {
   }
 }
 
-// ============================================================
-// STOP VIDEO SCANNER
-// ============================================================
 function stopVideoScanner() {
   stopScanner?.();
   stopScanner = null;
-
-  stopTurboLoop();
-  stopQuagga(); // ← ДОДАНО
 
   clearInterval(autofocusInterval);
   autofocusInterval = null;
@@ -1176,21 +1014,16 @@ function stopVideoScanner() {
     codeReader = null;
   }
 
-  if (turboWorker) {
-    turboWorker.terminate();
-    turboWorker = null;
-  }
+  const overlay = document.getElementById('scannerOverlay');
+  overlay?.classList.remove('active');
 
-  turboCanvas = null;
-  turboCtx = null;
-
-  document.getElementById('scannerOverlay')?.classList.remove('active');
   document.body.classList.remove('scan-flash');
 
-  if (typeof currentStep !== 'undefined' && currentStep === 5) {
+  if (currentStep === 5) {
     showScanResultsPopup();
   }
 }
+
 // ============================================================
 // CAMERA CONTROL BUTTONS
 // ============================================================
@@ -1200,15 +1033,13 @@ let isPaused = false;
 function pauseVideoScanner() {
   if (!videoStream) return;
   isPaused = true;
-  const track = videoStream.getVideoTracks()[0];
-  if (track) track.enabled = false;
+  videoStream.getVideoTracks()[0].enabled = false;
 }
 
 function resumeVideoScanner() {
   if (!videoStream) return;
   isPaused = false;
-  const track = videoStream.getVideoTracks()[0];
-  if (track) track.enabled = true;
+  videoStream.getVideoTracks()[0].enabled = true;
 }
 
 async function switchCamera() {
