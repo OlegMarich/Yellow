@@ -741,11 +741,13 @@ function showNonBlockingManualToast(code, qty = 1) {
     document.body.appendChild(toast);
 
     document.getElementById('manualToastOk').onclick = () => {
+      manualModeActive = false;
       registerBoxScan(lastScannedCode, lastQty);
       hideManualToast();
     };
 
     document.getElementById('manualToastEdit').onclick = () => {
+      manualModeActive = true;
       hideManualToast();
       openManualKeyboard(lastQty);
     };
@@ -791,7 +793,10 @@ window.clearQty = function () {
 
 window.confirmManualQty = function () {
   const qty = Number(document.getElementById('manualQty').value);
-  if (qty > 0) registerBoxScan(lastScannedCode, qty);
+  if (qty > 0) {
+    manualModeActive = false;
+    registerBoxScan(lastScannedCode, qty);
+  }
   window.closeManualKeyboard();
 };
 
@@ -881,35 +886,64 @@ function fillSummary() {
 // ============================================================
 // SAVE SCAN RESULT (SERVER OPTIONAL)
 // ============================================================
-
 async function saveScanResult() {
-  const date = document.getElementById('scanDate').value;
+  const dateInput = document.getElementById('scanDate');
+  const date = dateInput ? dateInput.value : null;
 
-  // Якщо сервер недоступний — просто пропускаємо
+  const payload = {
+    client: selectedClient || null,
+    date,
+    boxCounts,
+    totalBoxes,
+    boxesPerPallet,
+    totalPallets,
+  };
+
+  console.log('SAVE SCAN PAYLOAD:', payload);
+
+  // Якщо немає ключових даних — навіть не шлемо на сервер
+  if (
+    !payload.client ||
+    !payload.date ||
+    !payload.boxCounts ||
+    Object.keys(payload.boxCounts).length === 0
+  ) {
+    alert('Not enough data to save scan result');
+    return;
+  }
+
   try {
-    await fetch('/api/save-scan-result', {
+    const res = await fetch('/api/save-scan-result', {
       method: 'POST',
-      headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({
-        client: selectedClient,
-        date,
-        boxCounts,
-        totalBoxes,
-        boxesPerPallet,
-        totalPallets,
-      }),
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(payload),
     });
-  } catch (e) {
-    console.warn('saveScanResult: server unreachable');
+
+    const data = await res.json();
+    console.log('SAVE SCAN RESPONSE:', data);
+
+    if (!data.ok) {
+      alert('Error saving scan result: ' + (data.error || 'Unknown error'));
+    }
+  } catch (err) {
+    console.error('saveScanResult error:', err);
+    alert('Server error while saving scan result');
   }
 }
-
 // ============================================================
 // SCAN HANDLER
 // ============================================================
 
 function onScanDetected(code) {
-  if (manualModeActive) return; // якщо keypad/popup відкриті — ігноруємо
+  if (mode === 'manual') {
+    manualModeActive = true;
+    showNonBlockingManualToast(code, 1);
+  } else {
+    manualModeActive = false;
+    registerBoxScan(code, 1);
+  }
 
   const mode = document.getElementById('scanMode').value;
 
