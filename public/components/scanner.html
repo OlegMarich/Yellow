@@ -229,26 +229,28 @@
       <div id="keypadDisplay" class="keypad__display">1</div>
 
       <div class="keypad__grid">
-        <button class="keypad__btn">1</button>
-        <button class="keypad__btn">2</button>
-        <button class="keypad__btn">3</button>
 
-        <button class="keypad__btn">4</button>
-        <button class="keypad__btn">5</button>
-        <button class="keypad__btn">6</button>
+        <button class="keypad__btn" onclick="numPress(1)">1</button>
+        <button class="keypad__btn" onclick="numPress(2)">2</button>
+        <button class="keypad__btn" onclick="numPress(3)">3</button>
 
-        <button class="keypad__btn">7</button>
-        <button class="keypad__btn">8</button>
-        <button class="keypad__btn">9</button>
+        <button class="keypad__btn" onclick="numPress(4)">4</button>
+        <button class="keypad__btn" onclick="numPress(5)">5</button>
+        <button class="keypad__btn" onclick="numPress(6)">6</button>
 
-        <button class="keypad__btn keypad__clear">C</button>
-        <button class="keypad__btn">0</button>
-        <button class="keypad__btn keypad__back">←</button>
+        <button class="keypad__btn" onclick="numPress(7)">7</button>
+        <button class="keypad__btn" onclick="numPress(8)">8</button>
+        <button class="keypad__btn" onclick="numPress(9)">9</button>
+
+        <button class="keypad__btn keypad__clear" onclick="clearQty()">C</button>
+        <button class="keypad__btn" onclick="numPress(0)">0</button>
+        <button class="keypad__btn keypad__back" onclick="backspaceQty()">←</button>
+
       </div>
 
-      <div class="popup__actions">
-        <button id="keypadOk" class="button button--primary">OK</button>
-        <button id="keypadCancel" class="button button--secondary">Cancel</button>
+      <div class="keypad__actions">
+        <button class="button button--primary" onclick="confirmManualQty()">OK</button>
+        <button class="button button--secondary" onclick="cancelManualQty()">Cancel</button>
       </div>
 
     </div>
