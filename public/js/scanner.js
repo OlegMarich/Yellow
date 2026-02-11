@@ -360,7 +360,6 @@ window.addEventListener('DOMContentLoaded', async () => {
   initUniversalQR();
 });
 
-//ч2
 // ============================================================
 // PALLET CALCULATION (UI PREVIEW ONLY)
 // ============================================================
@@ -576,7 +575,6 @@ function log(msg) {
   logBox.scrollTop = logBox.scrollHeight;
 }
 
-//ч3
 // ============================================================
 // SCAN LOGIC (NEW MODEL)
 // ============================================================
@@ -620,103 +618,11 @@ function registerBoxScan(code, qty = 1) {
 }
 
 // ============================================================
-// MANUAL POPUP (ENABLED)
+// NON-BLOCKING MANUAL TOAST + KEYPAD
 // ============================================================
-
-const manualPopup = document.getElementById('manualConfirm');
-const popupCode = document.getElementById('popupCode');
-const popupQty = document.getElementById('popupQty');
 
 let lastScannedCode = '';
 let lastQty = 1;
-
-function showManualPopup(code, qty = 1) {
-  manualModeActive = true;
-  pauseVideoScanner(); // ← важливо
-
-  lastScannedCode = code;
-  lastQty = qty;
-
-  popupCode.textContent = code;
-  popupQty.textContent = qty;
-
-  manualPopup.classList.add('active');
-}
-
-function closeManualPopup() {
-  manualPopup.classList.remove('active');
-}
-
-document.getElementById('popupOk').addEventListener('click', () => {
-  registerBoxScan(lastScannedCode, lastQty);
-  closeManualPopup();
-
-  manualModeActive = false;
-  resumeVideoScanner();
-});
-
-document.getElementById('popupEdit').addEventListener('click', () => {
-  closeManualPopup();
-  openManualKeyboard(lastQty);
-});
-
-// ============================================================
-// MANUAL KEYPAD
-// ============================================================
-
-const manualKeyboard = document.getElementById('manualKeyboard');
-const keypadDisplay = document.getElementById('keypadDisplay');
-
-let keypadValue = 1;
-
-function openManualKeyboard(startValue = 1) {
-  manualModeActive = true;
-  pauseVideoScanner(); // ← важливо
-
-  keypadValue = startValue;
-  keypadDisplay.textContent = keypadValue;
-  manualKeyboard.classList.add('active');
-}
-
-function closeManualKeyboard() {
-  manualKeyboard.classList.remove('active');
-}
-
-// натискання цифр
-document.querySelectorAll('.keypad__btn').forEach((btn) => {
-  btn.addEventListener('click', () => {
-    const val = btn.textContent;
-
-    if (val === 'C') {
-      keypadValue = 0;
-    } else if (val === '←') {
-      keypadValue = Math.floor(keypadValue / 10);
-      if (keypadValue < 1) keypadValue = 1;
-    } else {
-      keypadValue = parseInt(keypadValue.toString() + val);
-    }
-
-    keypadDisplay.textContent = keypadValue;
-  });
-});
-
-// OK → повертаємо значення у popup
-document.getElementById('keypadOk').addEventListener('click', () => {
-  lastQty = keypadValue;
-  popupQty.textContent = lastQty;
-  closeManualKeyboard();
-  showManualPopup(lastScannedCode, lastQty);
-});
-
-// Cancel → просто закриваємо
-document.getElementById('keypadCancel').addEventListener('click', () => {
-  closeManualKeyboard();
-  showManualPopup(lastScannedCode, lastQty);
-});
-
-// ============================================================
-// NON-BLOCKING MANUAL TOAST
-// ============================================================
 
 function showNonBlockingManualToast(code, qty = 1) {
   lastScannedCode = code;
@@ -764,9 +670,7 @@ function hideManualToast() {
   if (toast) toast.classList.remove('manual-toast--visible');
 }
 
-// ============================================================
-// MANUAL KEYPAD
-// ============================================================
+// MANUAL KEYPAD v2
 
 window.openManualKeyboard = function (startValue = 1) {
   document.getElementById('manualQty').value = startValue;
@@ -886,6 +790,7 @@ function fillSummary() {
 // ============================================================
 // SAVE SCAN RESULT (SERVER OPTIONAL)
 // ============================================================
+
 async function saveScanResult() {
   const dateInput = document.getElementById('scanDate');
   const date = dateInput ? dateInput.value : null;
@@ -901,7 +806,6 @@ async function saveScanResult() {
 
   console.log('SAVE SCAN PAYLOAD:', payload);
 
-  // Якщо немає ключових даних — навіть не шлемо на сервер
   if (
     !payload.client ||
     !payload.date ||
@@ -932,29 +836,26 @@ async function saveScanResult() {
     alert('Server error while saving scan result');
   }
 }
+
 // ============================================================
 // SCAN HANDLER
 // ============================================================
-
 function onScanDetected(code) {
-  if (mode === 'manual') {
-    manualModeActive = true;
-    showNonBlockingManualToast(code, 1);
-  } else {
-    manualModeActive = false;
-    registerBoxScan(code, 1);
-  }
+  if (!code) return;
 
-  const mode = document.getElementById('scanMode').value;
+  const modeEl = document.getElementById('scanMode');
+  const mode = modeEl ? modeEl.value : 'manual';
+
+  if (manualModeActive) return;
 
   if (mode === 'auto') {
+    manualModeActive = false;
     registerBoxScan(code, 1);
   } else {
+    manualModeActive = true;
     showNonBlockingManualToast(code, 1);
   }
 }
-
-//ч4
 // ============================================================
 // UNIVERSAL VIDEO SCANNER — Android TURBO + iOS ZXing
 // ============================================================
@@ -978,7 +879,6 @@ function isIOS() {
 function isAndroid() {
   return /Android/i.test(navigator.userAgent);
 }
-
 // ============================================================
 // CAMERA STREAM
 // ============================================================
@@ -1027,7 +927,6 @@ let turboBusy = false;
 let turboLoop = null;
 
 function prepareAndroidROI() {
-  // створюємо порожній OffscreenCanvas, реальний розмір задається пізніше
   turboCanvas = new OffscreenCanvas(1, 1);
   turboCtx = turboCanvas.getContext('2d', {willReadFrequently: true});
 }
@@ -1036,7 +935,6 @@ function binarize(imageData) {
   const {data, width, height} = imageData;
   const out = new Uint8ClampedArray(width * height);
 
-  // швидкий grayscale (ZXing сам робить threshold)
   for (let i = 0, j = 0; i < data.length; i += 4, j++) {
     out[j] = (data[i] * 0.3 + data[i + 1] * 0.59 + data[i + 2] * 0.11) | 0;
   }
@@ -1097,7 +995,7 @@ function decodeAndroidFrame() {
       height: size,
       data: gray.buffer,
     },
-    [gray.buffer], // transferable
+    [gray.buffer],
   );
 }
 
@@ -1121,6 +1019,53 @@ function stopTurboLoop() {
   turboBusy = false;
 }
 
+let quaggaActive = false;
+
+function startQuagga() {
+  if (quaggaActive) return;
+
+  const videoEl = document.getElementById('video');
+
+  Quagga.init(
+    {
+      inputStream: {
+        type: 'LiveStream',
+        target: videoEl,
+        constraints: {
+          facingMode: 'environment',
+        },
+      },
+      decoder: {
+        readers: ['code_128_reader'],
+      },
+      locate: true,
+    },
+    (err) => {
+      if (err) {
+        console.error('Quagga init error:', err);
+        return;
+      }
+      Quagga.start();
+      quaggaActive = true;
+
+      Quagga.onDetected((result) => {
+        if (!result || !result.codeResult || !result.codeResult.code) return;
+
+        const code = result.codeResult.code.trim();
+        if (!code || manualModeActive) return;
+
+        onScanDetected(code);
+      });
+    },
+  );
+}
+
+function stopQuagga() {
+  if (!quaggaActive) return;
+  Quagga.stop();
+  Quagga.offDetected();
+  quaggaActive = false;
+}
 // ============================================================
 // START VIDEO SCANNER
 // ============================================================
@@ -1139,25 +1084,19 @@ async function startVideoScanner(facingMode = 'environment') {
     videoStream = stream;
 
     video.onloadedmetadata = () => {
-      if (video.paused) {
-        video.play().catch(() => {});
-      }
+      if (video.paused) video.play().catch(() => {});
     };
 
-    if (video.paused) {
-      await video.play().catch(() => {});
-    }
+    if (video.paused) await video.play().catch(() => {});
 
     const track = stream.getVideoTracks()[0];
     const features = await applyCameraFeatures(track);
 
-    // Autofocus (Android only)
     if (features.supportsFocus && isAndroid()) {
       clearInterval(autofocusInterval);
       autofocusInterval = setInterval(() => features.enableAutofocus(), 5000);
     }
 
-    // Torch
     if (features.supportsTorch) {
       flashBtn.style.display = 'block';
       flashBtn.onclick = () => {
@@ -1168,17 +1107,18 @@ async function startVideoScanner(facingMode = 'environment') {
       flashBtn.style.display = 'none';
     }
 
-    // Stop buttons
     document.getElementById('stopVideoScanner')?.addEventListener('click', stopVideoScanner);
     document.getElementById('closeScanner')?.addEventListener('click', stopVideoScanner);
 
-    // ANDROID → TURBO MODE
+    // ANDROID → Turbo + Quagga
     if (isAndroid()) {
       prepareAndroidROI();
       startTurboLoop();
+      startQuagga(); // ← ДОДАНО
 
       stopScanner = () => {
         stopTurboLoop();
+        stopQuagga(); // ← ДОДАНО
         stream.getTracks().forEach((t) => t.stop());
         videoStream = null;
       };
@@ -1186,7 +1126,7 @@ async function startVideoScanner(facingMode = 'environment') {
       return;
     }
 
-    // iOS → ZXing
+    // iOS / Desktop → ZXing + Quagga
     codeReader = new ZXing.BrowserMultiFormatReader();
 
     const handleScan = (result) => {
@@ -1204,8 +1144,11 @@ async function startVideoScanner(facingMode = 'environment') {
 
     codeReader.decodeFromVideoElement(video, handleScan);
 
+    startQuagga(); // ← ДОДАНО
+
     stopScanner = () => {
       codeReader?.reset();
+      stopQuagga(); // ← ДОДАНО
       stream.getTracks().forEach((t) => t.stop());
       videoStream = null;
     };
@@ -1218,12 +1161,12 @@ async function startVideoScanner(facingMode = 'environment') {
 // ============================================================
 // STOP VIDEO SCANNER
 // ============================================================
-
 function stopVideoScanner() {
   stopScanner?.();
   stopScanner = null;
 
   stopTurboLoop();
+  stopQuagga(); // ← ДОДАНО
 
   clearInterval(autofocusInterval);
   autofocusInterval = null;
@@ -1248,7 +1191,6 @@ function stopVideoScanner() {
     showScanResultsPopup();
   }
 }
-
 // ============================================================
 // CAMERA CONTROL BUTTONS
 // ============================================================
@@ -1278,7 +1220,7 @@ async function switchCamera() {
   stopVideoScanner();
   await startVideoScanner(newFacing);
 }
-//ч5
+
 // ============================================================
 // POPUP WITH FORMATTED RESULTS
 // ============================================================
@@ -1523,7 +1465,7 @@ document.getElementById('finishBtn')?.addEventListener('click', () => {
   saveScanResult();
   showStep(5);
 });
-//ч6
+
 // ============================================================
 // REPORT BUTTONS (EXCEL COUNTER)
 // ============================================================
