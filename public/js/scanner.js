@@ -983,7 +983,7 @@ async function applyCameraFeatures(track) {
 }
 
 // ============================================================
-// ANDROID TURBO MODE (ROI + BINARIZATION + WORKER)
+// ANDROID TURBO MODE (ROI + GRAYSCALE + TRANSFERABLE)
 // ============================================================
 
 let turboCanvas = null;
@@ -992,20 +992,19 @@ let turboWorker = null;
 let turboBusy = false;
 let turboLoop = null;
 
-function prepareAndroidROI(video) {
-  turboCanvas = document.createElement('canvas');
-  turboCanvas.width = 400;
-  turboCanvas.height = 400;
-  turboCtx = turboCanvas.getContext('2d');
+function prepareAndroidROI() {
+  // створюємо порожній OffscreenCanvas, реальний розмір задається пізніше
+  turboCanvas = new OffscreenCanvas(1, 1);
+  turboCtx = turboCanvas.getContext('2d', {willReadFrequently: true});
 }
 
 function binarize(imageData) {
   const {data, width, height} = imageData;
   const out = new Uint8ClampedArray(width * height);
 
+  // швидкий grayscale (ZXing сам робить threshold)
   for (let i = 0, j = 0; i < data.length; i += 4, j++) {
-    const v = (data[i] + data[i + 1] + data[i + 2]) / 3;
-    out[j] = v < 128 ? 0 : 255;
+    out[j] = (data[i] * 0.3 + data[i + 1] * 0.59 + data[i + 2] * 0.11) | 0;
   }
 
   return out;
@@ -1019,8 +1018,15 @@ function initTurboWorker() {
   turboWorker.onmessage = (ev) => {
     const msg = ev.data;
 
-    if (msg.type === 'result' && msg.code) {
-      onScanDetected(msg.code);
+    if (msg.type === 'result' && msg.code && !manualModeActive) {
+      const code = String(msg.code).trim();
+      if (code.length >= MIN_CODE_LENGTH) {
+        const now = Date.now();
+        if (now - lastScanTime >= 800) {
+          lastScanTime = now;
+          onScanDetected(code);
+        }
+      }
     }
 
     turboBusy = false;
@@ -1028,13 +1034,15 @@ function initTurboWorker() {
 }
 
 function decodeAndroidFrame() {
+  if (manualModeActive) return;
+
   const video = document.getElementById('video');
-  if (!video.videoWidth) return;
+  if (!video || video.readyState < 2) return;
 
   const vw = video.videoWidth;
   const vh = video.videoHeight;
 
-  const size = Math.min(vw, vh) * 0.6;
+  const size = Math.min(vw, vh) * 0.65;
   const x = (vw - size) / 2;
   const y = (vh - size) / 2;
 
@@ -1044,26 +1052,33 @@ function decodeAndroidFrame() {
   turboCtx.drawImage(video, x, y, size, size, 0, 0, size, size);
 
   const frame = turboCtx.getImageData(0, 0, size, size);
-  const bin = binarize(frame);
+  const gray = binarize(frame);
 
   initTurboWorker();
 
-  turboWorker.postMessage({
-    type: 'decode',
-    width: size,
-    height: size,
-    data: bin,
-  });
+  turboWorker.postMessage(
+    {
+      type: 'decode',
+      width: size,
+      height: size,
+      data: gray.buffer,
+    },
+    [gray.buffer], // transferable
+  );
 }
 
 function startTurboLoop() {
   stopTurboLoop();
 
   turboLoop = setInterval(() => {
-    if (turboBusy) return;
+    if (turboBusy || manualModeActive) return;
     turboBusy = true;
     decodeAndroidFrame();
-  }, 120);
+
+    setTimeout(() => {
+      if (turboBusy) turboBusy = false;
+    }, 800);
+  }, 150);
 }
 
 function stopTurboLoop() {
@@ -1089,7 +1104,15 @@ async function startVideoScanner(facingMode = 'environment') {
     video.srcObject = stream;
     videoStream = stream;
 
-    await video.play();
+    video.onloadedmetadata = () => {
+      if (video.paused) {
+        video.play().catch(() => {});
+      }
+    };
+
+    if (video.paused) {
+      await video.play().catch(() => {});
+    }
 
     const track = stream.getVideoTracks()[0];
     const features = await applyCameraFeatures(track);
@@ -1115,11 +1138,9 @@ async function startVideoScanner(facingMode = 'environment') {
     document.getElementById('stopVideoScanner')?.addEventListener('click', stopVideoScanner);
     document.getElementById('closeScanner')?.addEventListener('click', stopVideoScanner);
 
-    // ============================================================
     // ANDROID → TURBO MODE
-    // ============================================================
     if (isAndroid()) {
-      prepareAndroidROI(video);
+      prepareAndroidROI();
       startTurboLoop();
 
       stopScanner = () => {
@@ -1131,10 +1152,7 @@ async function startVideoScanner(facingMode = 'environment') {
       return;
     }
 
-    // ============================================================
     // iOS → ZXing
-    // ============================================================
-
     codeReader = new ZXing.BrowserMultiFormatReader();
 
     const handleScan = (result) => {
@@ -1142,6 +1160,10 @@ async function startVideoScanner(facingMode = 'environment') {
 
       const code = result.text.trim();
       if (code.length < MIN_CODE_LENGTH) return;
+
+      const now = Date.now();
+      if (now - lastScanTime < 800) return;
+      lastScanTime = now;
 
       onScanDetected(code);
     };
@@ -1177,10 +1199,18 @@ function stopVideoScanner() {
     codeReader = null;
   }
 
+  if (turboWorker) {
+    turboWorker.terminate();
+    turboWorker = null;
+  }
+
+  turboCanvas = null;
+  turboCtx = null;
+
   document.getElementById('scannerOverlay')?.classList.remove('active');
   document.body.classList.remove('scan-flash');
 
-  if (currentStep === 5) {
+  if (typeof currentStep !== 'undefined' && currentStep === 5) {
     showScanResultsPopup();
   }
 }
@@ -1194,13 +1224,15 @@ let isPaused = false;
 function pauseVideoScanner() {
   if (!videoStream) return;
   isPaused = true;
-  videoStream.getVideoTracks()[0].enabled = false;
+  const track = videoStream.getVideoTracks()[0];
+  if (track) track.enabled = false;
 }
 
 function resumeVideoScanner() {
   if (!videoStream) return;
   isPaused = false;
-  videoStream.getVideoTracks()[0].enabled = true;
+  const track = videoStream.getVideoTracks()[0];
+  if (track) track.enabled = true;
 }
 
 async function switchCamera() {
@@ -1212,7 +1244,7 @@ async function switchCamera() {
   stopVideoScanner();
   await startVideoScanner(newFacing);
 }
-
+//ч5
 // ============================================================
 // POPUP WITH FORMATTED RESULTS
 // ============================================================
@@ -1457,7 +1489,7 @@ document.getElementById('finishBtn')?.addEventListener('click', () => {
   saveScanResult();
   showStep(5);
 });
-
+//ч6
 // ============================================================
 // REPORT BUTTONS (EXCEL COUNTER)
 // ============================================================

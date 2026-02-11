@@ -7,6 +7,23 @@ const os = require('os');
 const {exec} = require('child_process');
 const multer = require('multer');
 
+const app = express();
+const PORT = Number(process.env.PORT) || 3000;
+
+// ---------------------------
+// DIRECTORIES
+// ---------------------------
+const inputDir = path.join(__dirname, 'input');
+const outputDir = path.join(__dirname, 'output');
+const storageDir = path.join(__dirname, 'storage');
+const publicDir = path.join(__dirname, 'public');
+const tempRoot = path.join(__dirname, 'temp');
+const uploadsDir = path.join(__dirname, 'uploads');
+
+[inputDir, outputDir, storageDir, tempRoot, uploadsDir].forEach((dir) => {
+  if (!fs.existsSync(dir)) fs.mkdirSync(dir, {recursive: true});
+});
+
 // ---------------------------
 // MULTER STORAGE (унікальні імена)
 // ---------------------------
@@ -20,18 +37,6 @@ const storage = multer.diskStorage({
   },
 });
 const upload = multer({storage});
-const app = express();
-const PORT = Number(process.env.PORT) || 3000;
-
-// ---------------------------
-// DIRECTORIES
-// ---------------------------
-const inputDir = path.join(__dirname, 'input');
-const outputDir = path.join(__dirname, 'output');
-const storageDir = path.join(__dirname, 'storage');
-const publicDir = path.join(__dirname, 'public');
-const tempRoot = path.join(__dirname, 'temp');
-const uploadsDir = path.join(__dirname, 'uploads'); // ✅ ОГОЛОШЕНО ДО MULTER [inputDir, outputDir, storageDir, tempRoot, uploadsDir].forEach((dir) => { if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true }); });
 
 // ---------------------------
 // HELPERS
@@ -71,11 +76,10 @@ app.use(express.static(publicDir));
 // ======================================================
 //  DEVICE PING + SERVER INFO (для scanner.js)
 // ======================================================
-
 app.get('/api/device-ping', (req, res) => {
   res.json({
     ok: true,
-    serverTime: Date.now(), // <-- те, що чекає scanner.js
+    serverTime: Date.now(),
     time: new Date().toISOString(),
   });
 });
@@ -87,8 +91,8 @@ app.get('/api/server-info', (req, res) => {
     port: PORT,
     tempRoot,
     time: new Date().toISOString(),
-    lanUrl: LAN_URL, // <-- для LAN
-    local: LAN_URL, // <-- те, що ти читаєш у getServerUrl
+    lanUrl: LAN_URL,
+    local: LAN_URL,
   });
 });
 
@@ -189,7 +193,6 @@ app.post('/upload-plan', upload.array('files'), (req, res) => {
         const dest = path.join(tempDir, 'salesPlan.xlsx');
 
         try {
-          // Windows-safe: copy instead of rename
           fs.copyFileSync(file.path, dest);
           fs.unlinkSync(file.path);
 
@@ -225,150 +228,45 @@ app.post('/upload-plan', upload.array('files'), (req, res) => {
   }
 });
 
-// ---------------------------
-// SALES PLAN REPORT
-// ---------------------------
-
+// ======================================================
+//  SALES REPORT PAGE + DATA
+// ======================================================
 app.get('/output/:week', (req, res) => {
   const week = req.params.week;
+  res.redirect(`/components/sales-report.html?week=${week}`);
+});
+
+app.get('/api/sales-data', (req, res) => {
+  const week = req.query.week;
+  if (!week) return res.json({ok: false, error: 'No week provided'});
+
   const jsonPath = path.join(storageDir, week, `${week}_salesPlan.json`);
 
   if (!fs.existsSync(jsonPath)) {
-    return res.status(404).send(`<h2>❌ JSON not found for ${week}</h2>`);
+    return res.status(404).json({ok: false, error: 'JSON not found'});
   }
 
   const data = fs.readFileSync(jsonPath, 'utf8');
-
-  res.send(`
-    <!DOCTYPE html>
-    <html>
-    <head>
-      <meta charset="UTF-8">
-      <title>Sales Report ${week}</title>
-      <style>
-        body { font-family: Arial; padding: 20px; background: #fafafa; }
-        h1 { margin-bottom: 20px; }
-        .filters { margin-bottom: 20px; }
-        select { padding: 6px; margin-right: 10px; }
-        table { border-collapse: collapse; width: 100%; margin-top: 20px; }
-        th, td { border: 1px solid #ccc; padding: 6px 10px; }
-        th { background: #f0f0f0; }
-        .client-block { margin-top: 40px; padding: 10px; background: #fff; border-radius: 6px; }
-        .location-block { margin-left: 20px; margin-top: 20px; }
-      </style>
-    </head>
-    <body>
-      <h1>Sales Report for ${week}</h1>
-
-      <div class="filters">
-        <select id="filterClient"><option value="">All Clients</option></select>
-        <select id="filterCountry"><option value="">All Countries</option></select>
-        <select id="filterProduct"><option value="">All Products</option></select>
-        <select id="filterDate"><option value="">All Dates</option></select>
-      </div>
-
-      <div id="reportContainer"></div>
-
-      <script>
-        const rawData = ${data};
-
-        const container = document.getElementById('reportContainer');
-        const fClient = document.getElementById('filterClient');
-        const fCountry = document.getElementById('filterCountry');
-        const fProduct = document.getElementById('filterProduct');
-        const fDate = document.getElementById('filterDate');
-
-        function initFilters() {
-          const clients = new Set();
-          const countries = new Set();
-          const products = new Set();
-          const dates = new Set(rawData.dates);
-
-          rawData.items.forEach(item => {
-            clients.add(item.customer.short);
-            countries.add(item.customer.country);
-            products.add(item.product.id);
-          });
-
-          for (const c of clients) fClient.innerHTML += '<option>' + c + '</option>';
-          for (const c of countries) fCountry.innerHTML += '<option>' + c + '</option>';
-          for (const p of products) fProduct.innerHTML += '<option>' + p + '</option>';
-          for (const d of dates) fDate.innerHTML += '<option>' + d + '</option>';
-        }
-
-        function render() {
-          const fc = fClient.value;
-          const fco = fCountry.value;
-          const fp = fProduct.value;
-          const fd = fDate.value;
-
-          let html = '';
-
-          const grouped = {};
-
-          rawData.items.forEach(item => {
-            if (fc && item.customer.short !== fc) return;
-            if (fco && item.customer.country !== fco) return;
-            if (fp && item.product.id !== fp) return;
-            if (fd && !item.dates.some(d => d.date === fd && d.qty > 0)) return;
-
-            const client = item.customer.short;
-            const location = item.location;
-
-            if (!grouped[client]) grouped[client] = {};
-            if (!grouped[client][location]) grouped[client][location] = [];
-
-            grouped[client][location].push(item);
-          });
-
-          for (const client of Object.keys(grouped)) {
-            html += '<div class="client-block"><h2>Client: ' + client + '</h2>';
-
-            for (const loc of Object.keys(grouped[client])) {
-              html += '<div class="location-block"><h3>Location: ' + loc + '</h3>';
-
-              html += '<table><tr><th>Product</th>';
-              rawData.dates.forEach(d => html += '<th>' + d + '</th>');
-              html += '</tr>';
-
-              grouped[client][loc].forEach(item => {
-                html += '<tr><td>' + item.product.id + '</td>';
-                item.dates.forEach(d => html += '<td>' + d.qty + '</td>');
-                html += '</tr>';
-              });
-
-              html += '</table></div>';
-            }
-
-            html += '</div>';
-          }
-
-          container.innerHTML = html || '<p>No data for selected filters.</p>';
-        }
-
-        initFilters();
-        render();
-
-        fClient.onchange = render;
-        fCountry.onchange = render;
-        fProduct.onchange = render;
-        fDate.onchange = render;
-      </script>
-    </body>
-    </html>
-  `);
+  res.json(JSON.parse(data));
 });
 
-// ---------------------------
-// Daily reports endpoint (for testing)
-// ---------------------------
-
+// ======================================================
+//  TRANSPORT REPORT PAGE + DATA
+// ======================================================
 app.get('/report/day/:date', (req, res) => {
   const date = req.params.date;
 
   if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
     return res.status(400).send('Invalid date format');
   }
+
+  res.redirect(`/components/transport-report.html?date=${date}`);
+});
+
+app.get('/api/transport-data', (req, res) => {
+  const date = req.query.date;
+
+  if (!date) return res.json({ok: false, error: 'No date provided'});
 
   const [year, month, day] = date.split('-');
   const week = getISOWeek(date);
@@ -377,141 +275,51 @@ app.get('/report/day/:date', (req, res) => {
   const jsonPath = path.join(storageDir, week, fileName);
 
   if (!fs.existsSync(jsonPath)) {
-    return res.status(404).send(`<h2>❌ No transport data for ${date}</h2>`);
+    return res.status(404).json({ok: false, error: 'Not found'});
   }
 
   const data = fs.readFileSync(jsonPath, 'utf8');
+  res.json(JSON.parse(data));
+});
 
-  res.send(`
-    <!DOCTYPE html>
-    <html>
-    <head>
-      <meta charset="UTF-8">
-      <title>Transport Report ${date}</title>
-      <style>
-        body { font-family: Arial; padding: 20px; background: #fafafa; }
-        h1 { margin-bottom: 20px; }
-        .filters { margin-bottom: 20px; }
-        select { padding: 6px; margin-right: 10px; }
-        table { border-collapse: collapse; width: 100%; margin-top: 20px; }
-        th, td { border: 1px solid #ccc; padding: 6px 10px; }
-        th { background: #f0f0f0; }
-        .client-block { margin-top: 40px; padding: 10px; background: #fff; border-radius: 6px; }
-        .location-block { margin-left: 20px; margin-top: 20px; }
-      </style>
-    </head>
-    <body>
-      <h1>Transport Report for ${date}</h1>
+// ======================================================
+//  SAVE SCAN RESULT — /api/save-scan-result
+// ======================================================
+app.post('/api/save-scan-result', (req, res) => {
+  try {
+    console.log("SCAN RESULT BODY:", req.body);
+    const {client, date, boxCounts, totalBoxes, boxesPerPallet, totalPallets} = req.body;
 
-      <div class="filters">
-        <select id="filterClient"><option value="">All Clients</option></select>
-        <select id="filterCountry"><option value="">All Countries</option></select>
-        <select id="filterProduct"><option value="">All Products</option></select>
-        <select id="filterCar"><option value="">All Trucks</option></select>
-        <select id="filterTime"><option value="">All Times</option></select>
-      </div>
+    if (!client || !date || !boxCounts) {
+      return res.status(400).json({ok: false, error: 'Missing fields'});
+    }
 
-      <div id="reportContainer"></div>
+    const resultsDir = path.join(storageDir, 'scan-results');
+    if (!fs.existsSync(resultsDir)) {
+      fs.mkdirSync(resultsDir, {recursive: true});
+    }
 
-      <script>
-        const rawData = ${data};
+    const safeClient = client.replace(/[^a-z0-9_-]/gi, '_');
+    const fileName = `${date}__${safeClient}.json`;
+    const filePath = path.join(resultsDir, fileName);
 
-        const container = document.getElementById('reportContainer');
-        const fClient = document.getElementById('filterClient');
-        const fCountry = document.getElementById('filterCountry');
-        const fProduct = document.getElementById('filterProduct');
-        const fCar = document.getElementById('filterCar');
-        const fTime = document.getElementById('filterTime');
+    const payload = {
+      client,
+      date,
+      boxCounts,
+      totalBoxes,
+      boxesPerPallet,
+      totalPallets,
+      savedAt: new Date().toISOString(),
+    };
 
-        function initFilters() {
-          const clients = new Set();
-          const countries = new Set();
-          const products = new Set();
-          const cars = new Set();
-          const times = new Set();
+    fs.writeFileSync(filePath, JSON.stringify(payload, null, 2), 'utf8');
 
-          rawData.forEach(item => {
-            clients.add(item.customer.short);
-            countries.add(item.customer.country);
-            products.add(item.product.id);
-            if (item.carNumber) cars.add(item.carNumber);
-            if (item.time) times.add(item.time);
-          });
-
-          for (const c of clients) fClient.innerHTML += '<option>' + c + '</option>';
-          for (const c of countries) fCountry.innerHTML += '<option>' + c + '</option>';
-          for (const p of products) fProduct.innerHTML += '<option>' + p + '</option>';
-          for (const c of cars) fCar.innerHTML += '<option>' + c + '</option>';
-          for (const t of times) fTime.innerHTML += '<option>' + t + '</option>';
-        }
-
-        function render() {
-          const fc = fClient.value;
-          const fco = fCountry.value;
-          const fp = fProduct.value;
-          const fcar = fCar.value;
-          const ft = fTime.value;
-
-          let html = '';
-
-          const grouped = {};
-
-          rawData.forEach(item => {
-            if (fc && item.customer.short !== fc) return;
-            if (fco && item.customer.country !== fco) return;
-            if (fp && item.product.id !== fp) return;
-            if (fcar && item.carNumber !== fcar) return;
-            if (ft && item.time !== ft) return;
-
-            const client = item.customer.short;
-            const location = item.location;
-
-            if (!grouped[client]) grouped[client] = {};
-            if (!grouped[client][location]) grouped[client][location] = [];
-
-            grouped[client][location].push(item);
-          });
-
-          for (const client of Object.keys(grouped)) {
-            html += '<div class="client-block"><h2>Client: ' + client + '</h2>';
-
-            for (const loc of Object.keys(grouped[client])) {
-              html += '<div class="location-block"><h3>Location: ' + loc + '</h3>';
-
-              html += '<table><tr><th>Product</th><th>Qty</th><th>Pal</th><th>Truck</th><th>Driver</th><th>Time</th></tr>';
-
-              grouped[client][loc].forEach(item => {
-                html += '<tr>' +
-                  '<td>' + item.product.id + '</td>' +
-                  '<td>' + item.qty + '</td>' +
-                  '<td>' + item.pal + '</td>' +
-                  '<td>' + item.carNumber + '</td>' +
-                  '<td>' + item.driver + '</td>' +
-                  '<td>' + item.time + '</td>' +
-                '</tr>';
-              });
-
-              html += '</table></div>';
-            }
-
-            html += '</div>';
-          }
-
-          container.innerHTML = html || '<p>No data for selected filters.</p>';
-        }
-
-        initFilters();
-        render();
-
-        fClient.onchange = render;
-        fCountry.onchange = render;
-        fProduct.onchange = render;
-        fCar.onchange = render;
-        fTime.onchange = render;
-      </script>
-    </body>
-    </html>
-  `);
+    return res.json({ok: true, file: fileName});
+  } catch (err) {
+    console.error('❌ save-scan-result error:', err);
+    return res.status(500).json({ok: false, error: 'Server error'});
+  }
 });
 
 // ---------------------------

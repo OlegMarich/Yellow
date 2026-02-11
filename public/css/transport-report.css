@@ -1,0 +1,73 @@
+/* ============================================================
+   TRANSPORT REPORT STYLES (Unified Theme)
+   ============================================================ */
+
+body {
+  font-family: 'Poppins', sans-serif;
+  padding: 24px;
+  background: var(--bg);
+  color: var(--text);
+}
+
+h1 {
+  margin-bottom: 20px;
+  font-weight: 700;
+  color: var(--blue);
+}
+
+.filters {
+  margin-bottom: 20px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+select {
+  padding: 8px 12px;
+  border-radius: 6px;
+  border: 1px solid var(--gray);
+  background: var(--white);
+  color: var(--text);
+  font-size: 14px;
+  cursor: pointer;
+  transition: 0.2s;
+}
+
+select:hover {
+  border-color: var(--blue);
+}
+
+table {
+  border-collapse: collapse;
+  width: 100%;
+  margin-top: 20px;
+  background: var(--white);
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+th,
+td {
+  border: 1px solid var(--gray);
+  padding: 8px 12px;
+  font-size: 14px;
+}
+
+th {
+  background: var(--blue);
+  color: var(--white);
+  font-weight: 600;
+}
+
+.client-block {
+  margin-top: 40px;
+  padding: 16px;
+  background: var(--white);
+  border-radius: 8px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
+}
+
+.location-block {
+  margin-left: 20px;
+  margin-top: 20px;
+}
