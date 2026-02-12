@@ -780,10 +780,9 @@ body {
 
 .overlay-btn--mode {
   font-weight: bold;
-  background: rgba(255,255,255,0.2);
+  background: rgba(255, 255, 255, 0.2);
   border: 1px solid #fff;
 }
-
 
 .overlay-btn:hover {
   background: #ff0;
@@ -1191,4 +1190,13 @@ body {
 
 .keypad__back {
   background: #d0d0ff;
+}
+
+#manualKeyboard {
+  pointer-events: none;
+  z-index: 9999;
+}
+
+#manualKeyboard.active {
+  pointer-events: auto;
 }

@@ -552,10 +552,21 @@ window.cancelManualQty = function () {
 };
 
 document.getElementById('manualScanBtn')?.addEventListener('click', () => {
-  const code = prompt('Enter code:');
-  if (!code) return;
+  // 1) користувач вводить код
+  const code = prompt('Enter code (0 = manual input):');
+  if (code === null) return; // натиснув Cancel
 
-  openManualKeyboard(code, 1);
+  // 2) якщо ввів 0 → просимо ввести код вручну
+  if (code.trim() === '0') {
+    const manual = prompt('Enter product code:');
+    if (!manual) return;
+
+    openManualKeyboard(manual, 1);
+    return;
+  }
+
+  // 3) якщо ввів будь-який інший код → одразу keypad
+  openManualKeyboard(code.trim(), 1);
 });
 // ============================================================
 // PROGRESS (NEW MODEL)
@@ -668,16 +679,21 @@ function onScanDetected(code) {
   const modeEl = document.getElementById('scanMode');
   const mode = modeEl ? modeEl.value : 'manual';
 
+  // якщо keypad відкритий — ігноруємо авто-скан
   if (manualModeActive) return;
 
+  // AUTO MODE → одразу реєструємо
   if (mode === 'auto') {
     registerBoxScan(code, 1);
     return;
   }
 
+  // MANUAL MODE → відкриваємо keypad з кодом
   lastScannedCode = code;
   lastQty = 1;
-  openManualKeyboard(1);
+
+  // ❗ ВАЖЛИВО: передаємо КОД, а не 1
+  openManualKeyboard(code, 1);
 }
 
 // ============================================================
