@@ -437,6 +437,30 @@ function loadSession() {
 // ============================================================
 // LOG (NEW MODEL)
 // ============================================================
+// function updateLog() {
+//   const logBox = document.getElementById('log');
+//   logBox.innerHTML = '';
+
+//   Object.entries(boxCounts).forEach(([code, count]) => {
+//     const div = document.createElement('div');
+//     div.className = 'scanner__log-item';
+//     div.innerHTML = `<span>${code}: ${count} pcs.</span>`;
+//     logBox.appendChild(div);
+//   });
+// }
+
+// function log(msg) {
+//   const logBox = document.getElementById('log');
+//   const div = document.createElement('div');
+//   div.textContent = msg;
+//   logBox.appendChild(div);
+//   logBox.scrollTop = logBox.scrollHeight;
+// }
+
+// ============================================================
+// LOG (NEW MODEL WITH EDIT/DELETE)
+// ============================================================
+
 function updateLog() {
   const logBox = document.getElementById('log');
   logBox.innerHTML = '';
@@ -458,7 +482,6 @@ function updateLog() {
 window.editScan = function (index) {
   const item = scannedCodes[index];
   editingIndex = index;
-
   openManualKeyboard(item.code, item.qty);
 };
 
@@ -467,11 +490,11 @@ window.deleteScan = function (index) {
   rebuildBoxCounts();
   updateLog();
   generateContainerReport();
+  updateProgress();
 };
 
 function rebuildBoxCounts() {
   boxCounts = {};
-
   scannedCodes.forEach((item) => {
     if (!boxCounts[item.code]) boxCounts[item.code] = 0;
     boxCounts[item.code] += item.qty;
@@ -482,30 +505,14 @@ function rebuildBoxCounts() {
 // SCAN LOGIC (NEW MODEL)
 // ============================================================
 
-function playContainerBeep() {
-  const ctx = new (window.AudioContext || window.webkitAudioContext)();
-  const osc = ctx.createOscillator();
-  const gain = ctx.createGain();
-
-  osc.type = 'square';
-  osc.frequency.value = 440;
-  gain.gain.value = 0.25;
-
-  osc.connect(gain);
-  gain.connect(ctx.destination);
-
-  osc.start();
-  osc.stop(ctx.currentTime + 0.25);
-}
-
 function registerBoxScan(code, qty = 1) {
   if (!code) return;
 
-  if (!boxCounts[code]) {
-    boxCounts[code] = 0;
-  }
+  scannedCodes.push({code, qty});
 
+  if (!boxCounts[code]) boxCounts[code] = 0;
   boxCounts[code] += qty;
+
   status = 'IN_PROGRESS';
 
   setTimeout(() => {
@@ -563,17 +570,21 @@ window.confirmManualQty = function () {
     return;
   }
 
-  // якщо редагуємо існуючий запис
+  // РЕДАГУВАННЯ
   if (editingIndex !== null) {
     scannedCodes[editingIndex].code = manualCode;
     scannedCodes[editingIndex].qty = qty;
-
     editingIndex = null;
-    renderStep6();
-  } else {
-    // додаємо новий запис
+  }
+  // ДОДАВАННЯ
+  else {
     registerBoxScan(manualCode, qty);
   }
+
+  rebuildBoxCounts();
+  updateLog();
+  generateContainerReport();
+  updateProgress();
 
   window.closeManualKeyboard();
 };
@@ -583,39 +594,19 @@ window.cancelManualQty = function () {
 };
 
 document.getElementById('manualScanBtn')?.addEventListener('click', () => {
-  // 1) користувач вводить код
   const code = prompt('Enter code (0 = manual input):');
-  if (code === null) return; // натиснув Cancel
+  if (code === null) return;
 
-  // 2) якщо ввів 0 → просимо ввести код вручну
   if (code.trim() === '0') {
     const manual = prompt('Enter product code:');
     if (!manual) return;
-
     openManualKeyboard(manual, 1);
     return;
   }
 
-  // 3) якщо ввів будь-який інший код → одразу keypad
   openManualKeyboard(code.trim(), 1);
 });
 
-// ============================================================
-// EDIT / DELETE SCAN RESULTS
-// ============================================================
-
-window.editScan = function (index) {
-  const item = scannedCodes[index];
-  editingIndex = index;
-
-  // відкриваємо keypad з існуючими даними
-  openManualKeyboard(item.code, item.qty);
-};
-
-window.deleteScan = function (index) {
-  scannedCodes.splice(index, 1);
-  renderStep6();
-};
 // ============================================================
 // PROGRESS (NEW MODEL)
 // ============================================================
