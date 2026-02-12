@@ -206,22 +206,7 @@
 
   </div>
 
-  <!-- MANUAL CONFIRM POPUP -->
-  <div id="manualConfirm" class="popup">
-    <div class="popup__content">
-      <div class="popup__title">Scanned code:</div>
-      <div id="popupCode" class="popup__code"></div>
-
-      <div class="popup__title">Quantity:</div>
-      <div id="popupQty" class="popup__qty">1</div>
-
-      <div class="popup__actions">
-        <button id="popupOk" class="button button--primary">OK</button>
-        <button id="popupEdit" class="button button--secondary">Edit</button>
-      </div>
-    </div>
-  </div>
-
+  <!-- MANUAL KEYPAD -->
   <div id="manualKeyboard" class="popup keypad">
     <div class="popup__content keypad__content">
 
@@ -229,7 +214,7 @@
       <div id="keypadDisplay" class="keypad__display">1</div>
 
       <div class="keypad__grid">
-
+        <input id="manualQty" type="hidden" value="1">
         <button class="keypad__btn" onclick="numPress(1)">1</button>
         <button class="keypad__btn" onclick="numPress(2)">2</button>
         <button class="keypad__btn" onclick="numPress(3)">3</button>
@@ -255,6 +240,7 @@
 
     </div>
   </div>
+
 
   <!-- FULLSCREEN VIDEO SCANNER -->
   <div id="scannerOverlay" class="scanner-overlay">
@@ -307,8 +293,6 @@
 
   <script type="module" src="/js/scanner.js"></script>
 
-  <div id="manualToast"></div>
-  <div id="manualKeyboard"></div>
 </body>
 
 </html>

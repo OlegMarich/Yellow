@@ -50,6 +50,7 @@ const side2Input = document.getElementById('side2');
 let manualModeActive = false;
 let lastScannedCode = '';
 let lastQty = 1;
+let manualCode = null;
 
 // ============================================================
 // SESSION KEY
@@ -499,40 +500,50 @@ function registerBoxScan(code, qty = 1) {
 }
 
 // ============================================================
-// MANUAL KEYPAD (ONLY)
+// MANUAL KEYPAD (FIXED VERSION)
 // ============================================================
 
-window.openManualKeyboard = function (startValue = 1) {
+window.openManualKeyboard = function (code, startValue = 1) {
   manualModeActive = true;
+  manualCode = code;
+
   const input = document.getElementById('manualQty');
-  input.value = startValue;
+  input.value = String(startValue);
+
   document.getElementById('manualKeyboard').classList.add('active');
 };
 
 window.closeManualKeyboard = function () {
   manualModeActive = false;
+  manualCode = null;
   document.getElementById('manualKeyboard').classList.remove('active');
 };
 
 window.numPress = function (n) {
   const input = document.getElementById('manualQty');
-  input.value += String(n);
+  if (input.value === '0') input.value = String(n);
+  else input.value += String(n);
 };
 
 window.backspaceQty = function () {
   const input = document.getElementById('manualQty');
-  input.value = input.value.slice(0, -1);
+  input.value = input.value.slice(0, -1) || '0';
 };
 
 window.clearQty = function () {
-  document.getElementById('manualQty').value = '';
+  document.getElementById('manualQty').value = '0';
 };
 
 window.confirmManualQty = function () {
   const qty = Number(document.getElementById('manualQty').value);
-  if (qty > 0) {
-    registerBoxScan(lastScannedCode, qty);
+
+  if (!manualCode || qty <= 0) {
+    alert('Enter valid code and quantity');
+    return;
   }
+
+  registerBoxScan(manualCode, qty);
+
   window.closeManualKeyboard();
 };
 
@@ -540,6 +551,12 @@ window.cancelManualQty = function () {
   window.closeManualKeyboard();
 };
 
+document.getElementById('manualScanBtn').addEventListener('click', () => {
+  const code = prompt('Enter code:');
+  if (!code) return;
+
+  openManualKeyboard(code, 1);
+});
 // ============================================================
 // PROGRESS (NEW MODEL)
 // ============================================================
