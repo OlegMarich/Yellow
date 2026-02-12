@@ -51,6 +51,7 @@ let manualModeActive = false;
 let lastScannedCode = '';
 let lastQty = 1;
 let manualCode = null;
+let editingIndex = null;
 
 // ============================================================
 // SESSION KEY
@@ -436,25 +437,45 @@ function loadSession() {
 // ============================================================
 // LOG (NEW MODEL)
 // ============================================================
-
 function updateLog() {
   const logBox = document.getElementById('log');
   logBox.innerHTML = '';
 
-  Object.entries(boxCounts).forEach(([code, count]) => {
+  scannedCodes.forEach((item, i) => {
     const div = document.createElement('div');
     div.className = 'scanner__log-item';
-    div.innerHTML = `<span>${code}: ${count} pcs.</span>`;
+
+    div.innerHTML = `
+      <span>${item.code}: ${item.qty} pcs.</span>
+      <button class="btn-edit" onclick="editScan(${i})">Edit</button>
+      <button class="btn-delete" onclick="deleteScan(${i})">Delete</button>
+    `;
+
     logBox.appendChild(div);
   });
 }
 
-function log(msg) {
-  const logBox = document.getElementById('log');
-  const div = document.createElement('div');
-  div.textContent = msg;
-  logBox.appendChild(div);
-  logBox.scrollTop = logBox.scrollHeight;
+window.editScan = function (index) {
+  const item = scannedCodes[index];
+  editingIndex = index;
+
+  openManualKeyboard(item.code, item.qty);
+};
+
+window.deleteScan = function (index) {
+  scannedCodes.splice(index, 1);
+  rebuildBoxCounts();
+  updateLog();
+  generateContainerReport();
+};
+
+function rebuildBoxCounts() {
+  boxCounts = {};
+
+  scannedCodes.forEach((item) => {
+    if (!boxCounts[item.code]) boxCounts[item.code] = 0;
+    boxCounts[item.code] += item.qty;
+  });
 }
 
 // ============================================================
@@ -542,7 +563,17 @@ window.confirmManualQty = function () {
     return;
   }
 
-  registerBoxScan(manualCode, qty);
+  // якщо редагуємо існуючий запис
+  if (editingIndex !== null) {
+    scannedCodes[editingIndex].code = manualCode;
+    scannedCodes[editingIndex].qty = qty;
+
+    editingIndex = null;
+    renderStep6();
+  } else {
+    // додаємо новий запис
+    registerBoxScan(manualCode, qty);
+  }
 
   window.closeManualKeyboard();
 };
@@ -568,6 +599,23 @@ document.getElementById('manualScanBtn')?.addEventListener('click', () => {
   // 3) якщо ввів будь-який інший код → одразу keypad
   openManualKeyboard(code.trim(), 1);
 });
+
+// ============================================================
+// EDIT / DELETE SCAN RESULTS
+// ============================================================
+
+window.editScan = function (index) {
+  const item = scannedCodes[index];
+  editingIndex = index;
+
+  // відкриваємо keypad з існуючими даними
+  openManualKeyboard(item.code, item.qty);
+};
+
+window.deleteScan = function (index) {
+  scannedCodes.splice(index, 1);
+  renderStep6();
+};
 // ============================================================
 // PROGRESS (NEW MODEL)
 // ============================================================
