@@ -55,29 +55,6 @@ function getISOWeek(dateStr) {
 }
 
 // -----------------------------
-// LOAD SCAN RESULTS
-// -----------------------------
-function loadScanResultsForClient(date, clientFull) {
-  const week = getISOWeek(date);
-  const safeClient = safeName(clientFull);
-
-  const scanPath = path.join(__dirname, 'storage', week, date, `${safeClient}.json`);
-
-  if (!fs.existsSync(scanPath)) {
-    console.warn(`⚠ No scan results for client: ${clientFull}`);
-    return null;
-  }
-
-  try {
-    const data = JSON.parse(fs.readFileSync(scanPath, 'utf-8'));
-    return data.boxCounts || null;
-  } catch (err) {
-    console.error('❌ Failed to read scan results:', err);
-    return null;
-  }
-}
-
-// -----------------------------
 // INPUTS
 // -----------------------------
 const selectedDate = process.argv[2];
@@ -145,6 +122,7 @@ async function fillTemplate() {
     const sample = entries[0];
     const clientFull = `${sample.customer?.short || ''} ${sample.locationCountry || ''} - ${sample.location || ''}`;
     const [truckPlate, trailerPlate] = splitPlates(sample.carNumber);
+    const driver = sample.driver || '';
     const date = formatDate(sample.shipDate || selectedDate);
     const time = normalizeTime(sample.time || '');
 
@@ -194,25 +172,6 @@ async function fillTemplate() {
       sheet.getCell('K63').value = `${truckPlate} ${trailerPlate}`.trim();
       sheet.getCell('E61').value = time;
       sheet.getCell('I95').value = pineappleQty;
-    }
-
-    // -----------------------------
-    // INSERT SCAN RESULTS INTO A3
-    // -----------------------------
-    const scanResults = loadScanResultsForClient(selectedDate, clientFull);
-
-    if (scanResults) {
-      let row = 3;
-      sheet.getCell(`A${row}`).value = 'Scanned containers:';
-      row++;
-
-      for (const [code, qty] of Object.entries(scanResults)) {
-        sheet.getCell(`A${row}`).value = code;
-        sheet.getCell(`B${row}`).value = qty;
-        row++;
-      }
-    } else {
-      sheet.getCell('A3').value = 'No scan results found';
     }
 
     const safeClient = safeName(clientFull);

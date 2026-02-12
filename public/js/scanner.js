@@ -46,6 +46,11 @@ let autofocusInterval = null;
 const side1Input = document.getElementById('side1');
 const side2Input = document.getElementById('side2');
 
+// manual keypad state
+let manualModeActive = false;
+let lastScannedCode = '';
+let lastQty = 1;
+
 // ============================================================
 // SESSION KEY
 // ============================================================
@@ -101,12 +106,10 @@ async function initUniversalQR() {
     }
   };
 
-  // --- початковий QR
   const placeholder = 'http://waiting-for-server.local';
   renderQR(placeholder);
   setStatus('Waiting for server…', true);
 
-  // --- опитування сервера
   const pollServer = async () => {
     const serverUrl = await getServerUrl();
     if (serverUrl && currentUrl !== serverUrl) {
@@ -237,7 +240,7 @@ document.getElementById('clientSelect').addEventListener('change', () => {
   updateLog();
   updateProgress();
 });
-//ч2
+
 // ============================================================
 // PALLET CALCULATION (UI PREVIEW ONLY)
 // ============================================================
@@ -483,7 +486,6 @@ function registerBoxScan(code, qty = 1) {
   boxCounts[code] += qty;
   status = 'IN_PROGRESS';
 
-  // важкі операції — в мікротаску, щоб не блокувати сканер
   setTimeout(() => {
     saveSession();
     updateLog();
@@ -497,97 +499,18 @@ function registerBoxScan(code, qty = 1) {
 }
 
 // ============================================================
-// MANUAL POPUP (ENABLED)
-// ============================================================
-
-const manualPopup = document.getElementById('manualConfirm');
-const popupCode = document.getElementById('popupCode');
-const popupQty = document.getElementById('popupQty');
-
-let lastScannedCode = '';
-let lastQty = 1;
-
-function showManualPopup(code, qty = 1) {
-  lastScannedCode = code;
-  lastQty = qty;
-
-  popupCode.textContent = code;
-  popupQty.textContent = qty;
-
-  manualPopup.classList.add('active');
-}
-
-function closeManualPopup() {
-  manualPopup.classList.remove('active');
-}
-
-document.getElementById('popupOk').addEventListener('click', () => {
-  registerBoxScan(lastScannedCode, lastQty);
-  closeManualPopup();
-});
-
-document.getElementById('popupEdit').addEventListener('click', () => {
-  closeManualPopup();
-  openManualKeyboard(lastQty);
-});
-//ч3
-// ============================================================
-// NON-BLOCKING MANUAL TOAST (НЕ БЛОКУЄ ВІДЕО)
-// ============================================================
-
-function showNonBlockingManualToast(code, qty = 1) {
-  lastScannedCode = code;
-  lastQty = qty;
-
-  let toast = document.getElementById('manualToast');
-  if (!toast) {
-    toast = document.createElement('div');
-    toast.id = 'manualToast';
-    toast.className = 'manual-toast';
-    toast.innerHTML = `
-      <div class="manual-toast__content">
-        <div class="manual-toast__title">Manual quantity</div>
-        <div class="manual-toast__code" id="manualToastCode"></div>
-        <div class="manual-toast__qty">Qty: <span id="manualToastQty"></span></div>
-        <div class="manual-toast__actions">
-          <button id="manualToastOk" class="button button--primary">OK</button>
-          <button id="manualToastEdit" class="button button--secondary">Edit</button>
-        </div>
-      </div>
-    `;
-    document.body.appendChild(toast);
-
-    document.getElementById('manualToastOk').onclick = () => {
-      registerBoxScan(lastScannedCode, lastQty);
-      hideManualToast();
-    };
-
-    document.getElementById('manualToastEdit').onclick = () => {
-      hideManualToast();
-      openManualKeyboard(lastQty);
-    };
-  }
-
-  document.getElementById('manualToastCode').textContent = code;
-  document.getElementById('manualToastQty').textContent = qty;
-
-  toast.classList.add('manual-toast--visible');
-}
-
-function hideManualToast() {
-  const toast = document.getElementById('manualToast');
-  if (toast) toast.classList.remove('manual-toast--visible');
-}
-// ============================================================
-// MANUAL KEYPAD (ENABLED)
+// MANUAL KEYPAD (ONLY)
 // ============================================================
 
 window.openManualKeyboard = function (startValue = 1) {
-  document.getElementById('manualQty').value = startValue;
+  manualModeActive = true;
+  const input = document.getElementById('manualQty');
+  input.value = startValue;
   document.getElementById('manualKeyboard').classList.add('active');
 };
 
 window.closeManualKeyboard = function () {
+  manualModeActive = false;
   document.getElementById('manualKeyboard').classList.remove('active');
 };
 
@@ -607,7 +530,13 @@ window.clearQty = function () {
 
 window.confirmManualQty = function () {
   const qty = Number(document.getElementById('manualQty').value);
-  if (qty > 0) registerBoxScan(lastScannedCode, qty);
+  if (qty > 0) {
+    registerBoxScan(lastScannedCode, qty);
+  }
+  window.closeManualKeyboard();
+};
+
+window.cancelManualQty = function () {
   window.closeManualKeyboard();
 };
 
@@ -670,6 +599,7 @@ function flashOrderComplete() {
   el.classList.add('order-complete');
   setTimeout(() => el.classList.remove('order-complete'), 2000);
 }
+
 // ============================================================
 // SUMMARY (NEW MODEL)
 // ============================================================
@@ -711,21 +641,26 @@ async function saveScanResult() {
 }
 
 // ============================================================
-// SCAN HANDLER (NEW MODEL)
+// SCAN HANDLER (NEW MODEL) — manual default, keypad only
 // ============================================================
 
 function onScanDetected(code) {
   console.log('[SCAN] detected raw:', code);
+  if (!code) return;
 
-  const mode = document.getElementById('scanMode').value;
+  const modeEl = document.getElementById('scanMode');
+  const mode = modeEl ? modeEl.value : 'manual';
+
+  if (manualModeActive) return;
 
   if (mode === 'auto') {
-    // максимально легка операція
     registerBoxScan(code, 1);
-  } else {
-    // показуємо неблокуючий тост, а не overlay
-    showNonBlockingManualToast(code, 1);
+    return;
   }
+
+  lastScannedCode = code;
+  lastQty = 1;
+  openManualKeyboard(1);
 }
 
 // ============================================================
@@ -801,13 +736,11 @@ async function startVideoScanner(facingMode = 'environment') {
     const track = stream.getVideoTracks()[0];
     const features = await applyCameraFeatures(track);
 
-    // AUTOFOCUS
     if (features.supportsFocus && isAndroid()) {
       clearInterval(autofocusInterval);
       autofocusInterval = setInterval(() => features.enableAutofocus(), 5000);
     }
 
-    // FLASH BUTTON
     if (features.supportsTorch) {
       flashBtn.style.display = 'block';
       flashBtn.onclick = () => {
@@ -818,7 +751,6 @@ async function startVideoScanner(facingMode = 'environment') {
       flashBtn.style.display = 'none';
     }
 
-    // CAMERA CONTROL BUTTONS (додаємо ОДИН раз)
     document.getElementById('stopVideoScanner')?.addEventListener('click', () => {
       stopVideoScanner();
     });
@@ -827,7 +759,6 @@ async function startVideoScanner(facingMode = 'environment') {
       stopVideoScanner();
     });
 
-    // INIT ZXING
     codeReader = new ZXing.BrowserMultiFormatReader();
 
     const handleScan = (result, err) => {
@@ -843,7 +774,6 @@ async function startVideoScanner(facingMode = 'environment') {
       const counterEl = document.getElementById('scanCounter');
       if (counterEl) counterEl.textContent = scannedCodes.length;
 
-      // легкий flash
       document.body.classList.add('scan-flash');
       setTimeout(() => document.body.classList.remove('scan-flash'), 80);
 
@@ -884,11 +814,11 @@ function stopVideoScanner() {
 
   document.body.classList.remove('scan-flash');
 
-  // показ результатів — тільки якщо ми реально завершили задачу (крок 5)
   if (currentStep === 5) {
     showScanResultsPopup();
   }
 }
+
 // ============================================================
 // CAMERA CONTROL BUTTONS
 // ============================================================
@@ -916,7 +846,7 @@ async function switchCamera() {
   stopVideoScanner();
   await startVideoScanner(newFacing);
 }
-//ч5
+
 // ============================================================
 // POPUP WITH FORMATTED RESULTS
 // ============================================================
@@ -1101,6 +1031,7 @@ cancelTaskBtn.addEventListener('click', () => {
     location.href = '/index.html';
   }
 });
+
 // ============================================================
 // FINAL REPORT (NEW MODEL — SORTED + COPY BUTTON)
 // ============================================================
@@ -1157,7 +1088,6 @@ document.getElementById('finishBtn')?.addEventListener('click', () => {
 // ============================================================
 // REPORT BUTTONS (EXCEL COUNTER)
 // ============================================================
-
 document.getElementById('generateReportBtn')?.addEventListener('click', async () => {
   const date = document.getElementById('scanDate').value;
   const statusEl = document.getElementById('reportStatus');
@@ -1165,6 +1095,7 @@ document.getElementById('generateReportBtn')?.addEventListener('click', async ()
   statusEl.textContent = 'Generating report...';
 
   try {
+    // 1) Генерація JSON‑звітів (твій існуючий код)
     const res = await fetch('/api/generate-counter', {
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
@@ -1177,6 +1108,21 @@ document.getElementById('generateReportBtn')?.addEventListener('click', async ()
       statusEl.textContent = '✔ Report generated successfully';
     } else {
       statusEl.textContent = '❌ Error generating report';
+    }
+
+    // 2) ДОДАНО: запуск fill-template-client.js
+    const res2 = await fetch('/api/run-fill-template', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({date}),
+    });
+
+    const data2 = await res2.json();
+
+    if (data2.ok) {
+      statusEl.textContent += '\n✔ Excel files updated';
+    } else {
+      statusEl.textContent += '\n❌ Excel generation failed';
     }
   } catch (err) {
     statusEl.textContent = '❌ Server error';
@@ -1198,7 +1144,7 @@ document.getElementById('openFolderBtn')?.addEventListener('click', () => {
 // ============================================================
 
 function showStep(n) {
-  const wasScanningStep = currentStep === 3; // припускаю, що сканер на кроці 3
+  const wasScanningStep = currentStep === 3;
 
   if (n < 0) n = 0;
   if (n > 5) n = 5;
@@ -1214,7 +1160,6 @@ function showStep(n) {
 
   const isScanningStep = currentStep === 3;
 
-  // якщо виходимо зі сканування — тоді стоп
   if (wasScanningStep && !isScanningStep) {
     stopVideoScanner();
   }
@@ -1222,19 +1167,16 @@ function showStep(n) {
 
 window.showStep = showStep;
 
-// NEXT buttons
 document.querySelectorAll('.wizard__next').forEach((btn) => {
   btn.addEventListener('click', () => {
     showStep(currentStep + 1);
   });
 });
 
-// BACK buttons
 document.querySelectorAll('.wizard__back').forEach((btn) => {
   btn.addEventListener('click', () => {
     showStep(currentStep - 1);
   });
 });
 
-// Initial step
 showStep(0);

@@ -287,20 +287,27 @@ app.get('/api/transport-data', (req, res) => {
 // ======================================================
 app.post('/api/save-scan-result', (req, res) => {
   try {
-    console.log("SCAN RESULT BODY:", req.body);
+    console.log('SCAN RESULT BODY:', req.body);
     const {client, date, boxCounts, totalBoxes, boxesPerPallet, totalPallets} = req.body;
 
     if (!client || !date || !boxCounts) {
       return res.status(400).json({ok: false, error: 'Missing fields'});
     }
 
-    const resultsDir = path.join(storageDir, 'scan-results');
+    // --- NEW: визначаємо тиждень
+    const week = getISOWeek(date); // наприклад "week07"
+
+    // --- NEW: шлях storage/weekX/date/
+    const resultsDir = path.join(storageDir, week, date);
     if (!fs.existsSync(resultsDir)) {
       fs.mkdirSync(resultsDir, {recursive: true});
     }
 
+    // клієнт у безпечному форматі
     const safeClient = client.replace(/[^a-z0-9_-]/gi, '_');
-    const fileName = `${date}__${safeClient}.json`;
+
+    // ім'я файлу
+    const fileName = `${safeClient}.json`; // можна додати дату, якщо хочеш
     const filePath = path.join(resultsDir, fileName);
 
     const payload = {
@@ -315,13 +322,43 @@ app.post('/api/save-scan-result', (req, res) => {
 
     fs.writeFileSync(filePath, JSON.stringify(payload, null, 2), 'utf8');
 
-    return res.json({ok: true, file: fileName});
+    return res.json({ok: true, file: filePath});
   } catch (err) {
     console.error('❌ save-scan-result error:', err);
     return res.status(500).json({ok: false, error: 'Server error'});
   }
 });
 
+// ======================================================
+//  RUN FILL-TEMPLATE — /api/run-fill-template
+// ======================================================
+app.post('/api/run-fill-template', (req, res) => {
+  try {
+    const {date} = req.body;
+
+    if (!date) {
+      return res.json({ok: false, error: 'Missing date'});
+    }
+
+    const scriptPath = path.join(__dirname, 'fill-template-client.js');
+    const cmd = `node "${scriptPath}" ${date}`;
+
+    console.log('▶ Running fill-template-client.js:', cmd);
+
+    exec(cmd, {maxBuffer: 1024 * 1024 * 20}, (err, stdout, stderr) => {
+      if (err) {
+        console.error('❌ fill-template error:', err);
+        return res.json({ok: false, error: 'Script failed'});
+      }
+
+      console.log('📄 fill-template output:', stdout);
+      return res.json({ok: true, output: stdout});
+    });
+  } catch (err) {
+    console.error('❌ run-fill-template error:', err);
+    return res.status(500).json({ok: false, error: 'Server error'});
+  }
+});
 // ---------------------------
 // START SERVER
 // ---------------------------
