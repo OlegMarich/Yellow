@@ -551,7 +551,7 @@ window.cancelManualQty = function () {
   window.closeManualKeyboard();
 };
 
-document.getElementById('manualScanBtn').addEventListener('click', () => {
+document.getElementById('manualScanBtn')?.addEventListener('click', () => {
   const code = prompt('Enter code:');
   if (!code) return;
 
