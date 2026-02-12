@@ -537,6 +537,7 @@ window.openManualKeyboard = function (code, startValue = 1) {
 
   const input = document.getElementById('manualQty');
   input.value = String(startValue);
+  updateKeypadDisplay();
 
   document.getElementById('manualKeyboard').classList.add('active');
 };
@@ -551,15 +552,18 @@ window.numPress = function (n) {
   const input = document.getElementById('manualQty');
   if (input.value === '0') input.value = String(n);
   else input.value += String(n);
+  updateKeypadDisplay();
 };
 
 window.backspaceQty = function () {
   const input = document.getElementById('manualQty');
   input.value = input.value.slice(0, -1) || '0';
+  updateKeypadDisplay();
 };
 
 window.clearQty = function () {
   document.getElementById('manualQty').value = '0';
+  updateKeypadDisplay();
 };
 
 window.confirmManualQty = function () {
@@ -578,7 +582,7 @@ window.confirmManualQty = function () {
   }
   // ДОДАВАННЯ
   else {
-    registerBoxScan(manualCode, qty);
+    registerBoxScan(manualCode, qty); // ← цього достатньо
   }
 
   rebuildBoxCounts();
@@ -606,6 +610,11 @@ document.getElementById('manualScanBtn')?.addEventListener('click', () => {
 
   openManualKeyboard(code.trim(), 1);
 });
+
+function updateKeypadDisplay() {
+  const val = document.getElementById('manualQty').value;
+  document.getElementById('keypadDisplay').textContent = val;
+}
 
 // ============================================================
 // PROGRESS (NEW MODEL)
