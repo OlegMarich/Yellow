@@ -56,7 +56,6 @@ function loadJSON(name) {
 const clients = loadJSON('mapping-clients.json');
 const locations = loadJSON('mapping-locations.json');
 const products = loadJSON('mapping-products.json');
-const productAliases = loadJSON('mapping-product-aliases.json');
 const clientPallets = loadJSON('mapping-client-pallets.json');
 
 // ===============================
@@ -114,20 +113,15 @@ function normalizeLocationName(name) {
     .trim();
 }
 
-function mapProduct(productName) {
-  const p = (productName || '').toLowerCase();
-  for (const [productId, aliases] of Object.entries(productAliases)) {
-    if (aliases.some((a) => p.includes(a.toLowerCase()))) {
-      return {id: productId, ...products[productId]};
-    }
-  }
-  return null;
-}
-
-function getClientPalletInfo(locationName, productId, defaultInfo) {
-  const entry = clientPallets[locationName];
-  if (!entry) return defaultInfo;
-  return entry[productId] || defaultInfo;
+// ===============================
+// НОВЕ: нормалізація продукту з Excel
+// ===============================
+function normalizeProductName(name) {
+  return (name || '')
+    .toUpperCase()
+    .replace(/[^A-Z0-9]+/g, '_')
+    .replace(/_+/g, '_')
+    .replace(/^_|_$/g, '');
 }
 
 // ===============================
@@ -137,7 +131,7 @@ async function main() {
   console.log(`📁 Використовуємо temp директорію: ${baseDir}`);
 
   // ===============================
-  // NEW: Автоматичний пошук транспортного файлу
+  // Автоматичний пошук транспортного файлу
   // ===============================
   const transportFile = fs
     .readdirSync(baseDir)
@@ -151,7 +145,6 @@ async function main() {
   const transportPath = path.join(baseDir, transportFile);
   console.log(`📄 Використовуємо транспортний файл: ${transportFile}`);
 
-  // Читаємо Excel
   const workbook = xlsx.readFile(transportPath);
 
   function normalizeDateString(str) {
@@ -178,7 +171,7 @@ async function main() {
   const existingIndex = new Map();
 
   // ===============================
-  // 10. Обробка транспортного плану
+  // Обробка транспортного плану
   // ===============================
   rows.forEach((raw) => {
     const r = normalizeRow(raw);
@@ -186,15 +179,42 @@ async function main() {
     if (!r['customer'] && !r['product']) return;
 
     const rawCustomer = (r['customer'] || '').trim();
-    const productMapped = mapProduct(r['product']);
+
+    // НОВЕ: нормалізація продукту
+    const productId = normalizeProductName(r['product']);
+    const productInfo = products[productId];
+
+    if (!productInfo) {
+      console.warn('⚠️ Продукт не знайдено у mapping-products:', r['product'], '→', productId);
+      return;
+    }
+
     const qty = getQty(r);
     const pal = getPal(r);
 
-    if (!productMapped) return;
+    function findLocation(rawCustomer) {
+      const customer = clean(rawCustomer);
 
-    const foundLocation = Object.keys(locations).find((loc) =>
-      rawCustomer.toLowerCase().includes(loc.toLowerCase()),
-    );
+      // 1) Точний збіг
+      for (const loc of Object.keys(locations)) {
+        if (customer === clean(loc)) return loc;
+      }
+
+      // 2) Збіг по словах
+      const words = customer.split(' ');
+      for (const loc of Object.keys(locations)) {
+        if (words.includes(clean(loc))) return loc;
+      }
+
+      // 3) Лише якщо нічого не знайдено — includes()
+      for (const loc of Object.keys(locations)) {
+        if (customer.includes(clean(loc))) return loc;
+      }
+
+      return null;
+    }
+
+    const foundLocation = findLocation(rawCustomer);
 
     if (!foundLocation) return;
 
@@ -210,12 +230,11 @@ async function main() {
     let timeRaw = r['loading time'] || r['time'] || '';
     if (typeof timeRaw === 'number') timeRaw = excelTimeToHHMM(timeRaw);
 
-    const productInfo = products[productMapped.id];
-    const palletInfo = getClientPalletInfo(foundLocation, productMapped.id, productInfo);
+    const palletInfo = clientPallets[foundLocation]?.[productId] || productInfo;
 
     const palFinal = pal > 0 ? Math.ceil(Number(pal)) : 0;
 
-    const key = `${clientId}|${productMapped.id}|${normalizedLocation}|${dateArg}|${carNumber}|${timeRaw}`;
+    const key = `${clientId}|${productId}|${normalizedLocation}|${dateArg}|${carNumber}|${timeRaw}`;
 
     if (existingIndex.has(key)) {
       const idx = existingIndex.get(key);
@@ -235,9 +254,9 @@ async function main() {
         locationCountry: clientInfo.country,
 
         product: {
-          id: productMapped.id,
-          name: productMapped.id,
-          bio: productMapped.id.toLowerCase().includes('bio'),
+          id: productId,
+          name: productId,
+          bio: productId.includes('BIO'),
           boxPerPal: palletInfo.boxPerPal,
           weightPerBox: palletInfo.weightPerBox,
           palType: palletInfo.palType,
@@ -256,7 +275,7 @@ async function main() {
   });
 
   // ===============================
-  // 12. Skeleton з salesPlan
+  // Skeleton з salesPlan
   // ===============================
   for (const item of salesPlan.items) {
     const clientId = item.customer.id;
@@ -288,7 +307,7 @@ async function main() {
   }
 
   // ===============================
-  // 13. Збереження результату
+  // Збереження результату
   // ===============================
   const storageDir = path.join(__dirname, 'storage', weekArg);
   fs.mkdirSync(storageDir, {recursive: true});

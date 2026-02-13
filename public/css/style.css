@@ -1200,3 +1200,11 @@ body {
 #manualKeyboard.active {
   pointer-events: auto;
 }
+
+.hidden-input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+  width: 0;
+  height: 0;
+}
