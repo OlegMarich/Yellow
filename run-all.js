@@ -96,10 +96,6 @@ async function main() {
     }
 
     console.log(`✅ @@@DONE:${date}`);
-
-    // OPEN OUTPUT DIRECTORY
-    const outputDir = path.join(__dirname, 'output', date);
-    openFolder(outputDir);
   } catch {
     process.exit(1);
   }
